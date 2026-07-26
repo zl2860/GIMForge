@@ -3,15 +3,17 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
+from . import __version__
 from .components import components_from_matrix
-from .dependencies import doctor, resolve_plink2
+from .dependencies import doctor, resolve_bolt, resolve_plink2
 from .io import read_json, read_table, write_json, write_table
 from .parameters import parameters_from_args
 from .pipeline import _FIELDS, run_gim
 from .plink import version
-from .progress import configure_progress_log, progress
+from .progress import configure_progress_log, progress, start_progress_session
 from .regions import clump_sentinels
 from .report import write_report
 
@@ -51,6 +53,24 @@ def _parameter_arguments(parser: argparse.ArgumentParser) -> None:
     group.add_argument("--geno-missing-max", type=float, default=None)
     group.add_argument("--threads", type=int, default=1)
     group.add_argument("--metabolite-batch-size", type=int, default=1, help="PLINK phenotypes per temporary result batch; larger values trade disk for speed")
+    group.add_argument(
+        "--genetic-model",
+        choices=("additive", "dominant", "recessive"),
+        default="additive",
+        help="genotype coding used for both tested and conditioning variants",
+    )
+    group.add_argument(
+        "--regression-model",
+        choices=("linear", "mixed"),
+        default="linear",
+        help="linear uses PLINK2; mixed uses additive BOLT-LMM-inf",
+    )
+    group.add_argument(
+        "--mixed-backend",
+        choices=("bolt-lmm",),
+        default="bolt-lmm",
+        help="mixed-model engine",
+    )
     group.add_argument("--no-force-single-forward-lead", dest="force_single_forward_lead", action="store_false")
     group.set_defaults(force_single_forward_lead=True)
 
@@ -68,6 +88,9 @@ def _parameters(args: argparse.Namespace):
         "mac_min": args.mac_min, "geno_missing_max": args.geno_missing_max, "threads": args.threads,
         "metabolite_batch_size": args.metabolite_batch_size,
         "force_single_forward_lead": args.force_single_forward_lead,
+        "genetic_model": args.genetic_model,
+        "regression_model": args.regression_model,
+        "mixed_backend": args.mixed_backend,
     })
 
 
@@ -141,6 +164,15 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--covariates", required=True, help="uncompressed headered TSV: FID IID plus numeric covariates")
     run_parser.add_argument("--out", required=True)
     run_parser.add_argument("--plink2", help="PLINK2 executable; defaults to plink2 in PATH")
+    run_parser.add_argument("--bolt", help="BOLT-LMM executable; required with --regression-model mixed")
+    run_parser.add_argument(
+        "--bolt-model-bfile",
+        help="genome-wide PLINK BED/BIM/FAM prefix for the BOLT random effect; defaults to --bfile",
+    )
+    run_parser.add_argument(
+        "--bolt-genetic-map",
+        help="BOLT-LMM genetic map matching the analysis genome build; required for mixed",
+    )
     _sumstats_column_arguments(run_parser)
     run_parser.add_argument("--only-region", action="append", help="run one or more already-numbered regions")
     run_parser.add_argument("--max-regions", type=int, help="run the first N regions; useful for a smoke test")
@@ -156,13 +188,18 @@ def build_parser() -> argparse.ArgumentParser:
     report_parser.add_argument("--results", required=True)
     report_parser.add_argument("--out", help="HTML path; defaults to RESULTS/report.html")
     report_parser.add_argument("--conditional-p", type=float, help="override the threshold recorded in run_manifest.json")
-    doctor_parser = subparsers.add_parser("doctor", help="check Python and PLINK2 dependencies")
+    doctor_parser = subparsers.add_parser(
+        "doctor", help="check Python, PLINK2, and optional mixed-model dependencies"
+    )
     doctor_parser.add_argument("--plink2", help="PLINK2 executable; defaults to plink2 in PATH")
+    doctor_parser.add_argument("--regression-model", choices=("linear", "mixed"), default="linear")
+    doctor_parser.add_argument("--bolt", help="BOLT-LMM executable; checked when regression model is mixed")
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    command = ["gimforge", *(argv if argv is not None else sys.argv[1:])]
     try:
         if args.command == "clump":
             output = Path(args.out)
@@ -170,6 +207,9 @@ def main(argv: list[str] | None = None) -> int:
                 raise FileExistsError(f"Output directory is not empty: {output}. Choose a new output directory.")
             output.mkdir(parents=True, exist_ok=True)
             configure_progress_log(output / "run.log")
+            start_progress_session(
+                version=__version__, command=command, log_path=output / "run.log"
+            )
             progress("Starting trait-specific sentinel clumping")
             progress("Checking PLINK2 dependency")
             executable = resolve_plink2(args.plink2)
@@ -219,14 +259,30 @@ def main(argv: list[str] | None = None) -> int:
                 raise FileExistsError(f"Output directory is not empty: {output}. Choose a new output directory.")
             output.mkdir(parents=True, exist_ok=True)
             configure_progress_log(output / "run.log")
+            start_progress_session(
+                version=__version__, command=command, log_path=output / "run.log"
+            )
             progress("Starting GIMForge run")
+            parameters = _parameters(args)
+            progress(
+                "Conditional configuration: "
+                f"regression={parameters.regression_model}; "
+                f"genetic_model={parameters.genetic_model}; "
+                f"P<={parameters.conditional_p:.6g}"
+            )
             progress("Checking PLINK2 dependency")
+            if args.regression_model == "mixed":
+                progress("Checking BOLT-LMM dependency")
             run_gim(
                 sumstats=args.sumstats, sumstats_manifest=args.sumstats_manifest, sentinels=args.sentinels,
                 bfile=args.bfile, ld_bfile=args.ld_bfile,
                 ancestry=args.ancestry, ld_panel_name=args.ld_panel_name,
                 phenotypes=args.phenotypes, covariates=args.covariates,
-                output=args.out, plink2=resolve_plink2(args.plink2), parameters=_parameters(args), sumstats_columns=_sumstats_columns(args),
+                output=args.out, plink2=resolve_plink2(args.plink2), parameters=parameters,
+                bolt=resolve_bolt(args.bolt) if args.regression_model == "mixed" else None,
+                bolt_model_bfile=args.bolt_model_bfile,
+                bolt_genetic_map=args.bolt_genetic_map,
+                sumstats_columns=_sumstats_columns(args),
                 only_regions=set(args.only_region) if args.only_region else None, max_regions=args.max_regions, verbose=args.verbose,
             )
         elif args.command == "components":
@@ -235,12 +291,18 @@ def main(argv: list[str] | None = None) -> int:
                 raise FileExistsError(f"Output directory is not empty: {output}. Choose a new output directory.")
             output.mkdir(parents=True, exist_ok=True)
             configure_progress_log(output / "run.log")
+            start_progress_session(
+                version=__version__, command=command, log_path=output / "run.log"
+            )
             progress("Reading and normalising existing ordered conditional matrix")
             _write_component_result(output, read_table(args.matrix_out), args.conditional_p, args.reference_panel, args.ancestry)
             progress(f"Component outputs and report written to {output.resolve()}")
         elif args.command == "report":
             results = Path(args.results)
             configure_progress_log(results / "run.log")
+            start_progress_session(
+                version=__version__, command=command, log_path=results / "run.log"
+            )
             progress("Regenerating interactive HTML report")
             matrix = read_table(results / "matrix_out.tsv.gz")
             edges_path = results / "edges.tsv.gz"
@@ -263,6 +325,9 @@ def main(argv: list[str] | None = None) -> int:
                 "LD reference prefix": inputs.get("ld_reference_bfile", "not recorded"),
                 "Individual-level genotype": inputs.get("analysis_bfile", "not recorded"),
                 "PLINK2": tools.get("plink2_version", "not recorded"),
+                "BOLT-LMM": tools.get("bolt_version") or "not used",
+                "Genetic model": recorded_parameters.get("genetic_model", "additive"),
+                "Regression model": recorded_parameters.get("regression_model", "linear"),
                 "Conditional P threshold": conditional_p,
             }
             write_report(
@@ -272,7 +337,11 @@ def main(argv: list[str] | None = None) -> int:
             )
             progress(f"Report written to {Path(args.out or results / 'report.html').resolve()}")
         else:
-            healthy, rows = doctor(args.plink2)
+            healthy, rows = doctor(
+                args.plink2,
+                regression_model=args.regression_model,
+                bolt=args.bolt,
+            )
             for dependency, state, detail in rows:
                 print(f"{dependency}\t{state}\t{detail}")
             return 0 if healthy else 2

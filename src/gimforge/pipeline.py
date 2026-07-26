@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Mapping, Sequence
 
+from .bolt import require_executable as require_bolt_executable
+from .bolt import version as bolt_version
 from .components import components_from_matrix
 from .conditional import run_conditional_analysis
 from .io import write_json, write_table
@@ -51,6 +53,9 @@ def run_gim(
     output: str | Path,
     plink2: str | Path,
     parameters: GIMParameters,
+    bolt: str | Path | None = None,
+    bolt_model_bfile: str | Path | None = None,
+    bolt_genetic_map: str | Path | None = None,
     sumstats_columns: Mapping[str, str] | None = None,
     only_regions: set[str] | None = None,
     max_regions: int | None = None,
@@ -64,6 +69,21 @@ def run_gim(
         raise ValueError("ancestry must be one of AFR, AMR, EAS, EUR, SAS, or CUSTOM.")
     output, bfile, plink2 = Path(output), require_bfile(bfile), require_executable(plink2)
     ld_bfile = require_bfile(ld_bfile)
+    resolved_bolt: Path | None = None
+    resolved_bolt_model_bfile: Path | None = None
+    resolved_bolt_genetic_map: Path | None = None
+    if parameters.regression_model == "mixed":
+        if bolt is None:
+            raise ValueError("Mixed conditional analysis requires --bolt.")
+        if bolt_genetic_map is None:
+            raise ValueError("Mixed conditional analysis requires --bolt-genetic-map.")
+        resolved_bolt = require_bolt_executable(bolt)
+        resolved_bolt_model_bfile = require_bfile(bolt_model_bfile or bfile)
+        resolved_bolt_genetic_map = Path(bolt_genetic_map)
+        if not resolved_bolt_genetic_map.is_file():
+            raise FileNotFoundError(
+                f"BOLT-LMM genetic map does not exist: {resolved_bolt_genetic_map}"
+            )
     panel_label = ld_panel_name or ld_bfile.name
     if output.exists() and any(path.name != "run.log" for path in output.iterdir()):
         raise FileExistsError(f"Output directory is not empty: {output}. Choose a new output directory.")
@@ -93,6 +113,8 @@ def run_gim(
     conditional = run_conditional_analysis(
         regions=regions, region_metabolites=region_result["region_metabolites"], bfile=bfile, plink2=plink2,
         phenotypes=phenotypes, covariates=covariates, parameters=parameters, only_regions=selected_ids, verbose=verbose,
+        bolt=resolved_bolt, bolt_model_bfile=resolved_bolt_model_bfile,
+        bolt_genetic_map=resolved_bolt_genetic_map,
     )
     progress("Assembling significant SNP–trait edges into GIM connected components")
     components = components_from_matrix(conditional["matrix_out"], conditional_p=parameters.conditional_p) if conditional["matrix_out"] else {"edges": [], "members": [], "gim_summary": []}
@@ -107,7 +129,15 @@ def run_gim(
             if sentinels is not None
             else "Supplied summary statistics were used only for trait-specific sentinel clumping and region definition; no GWAS was run."
         ),
-        "conditional_model": "PLINK2 additive linear regression with identical supplied covariates (variance-standardized for numerical stability); forward selection, full-model pruning, and ordered V_R x M_R matrix.",
+        "conditional_model": (
+            f"PLINK2 {parameters.genetic_model} linear regression with identical supplied "
+            "covariates (variance-standardized for numerical stability); forward selection, "
+            "full-model pruning, and ordered V_R x M_R matrix."
+            if parameters.regression_model == "linear"
+            else "BOLT-LMM-inf additive linear mixed model with supplied fixed covariates "
+            "and a genome-wide LOCO polygenic random effect; forward selection, "
+            "full-model pruning, and ordered V_R x M_R matrix."
+        ),
         "genotype_backend": "PLINK 1 binary hard-call input. This backend cannot apply imputation INFO filtering; MAC filtering is applied.",
         "parameters": parameters.to_dict(),
         "inputs": {
@@ -120,6 +150,16 @@ def run_gim(
             "ld_reference_ancestry": ancestry,
             "phenotypes": str(Path(phenotypes).resolve()),
             "covariates": str(Path(covariates).resolve()),
+            "bolt_model_bfile": (
+                str(resolved_bolt_model_bfile.resolve())
+                if resolved_bolt_model_bfile is not None
+                else None
+            ),
+            "bolt_genetic_map": (
+                str(resolved_bolt_genetic_map.resolve())
+                if resolved_bolt_genetic_map is not None
+                else None
+            ),
         },
         "ld_reference": "explicitly_supplied_reference_panel",
         "region_seed_input": (
@@ -131,7 +171,14 @@ def run_gim(
                 else "stacked_summary_statistics_with_internal_trait_specific_clumping"
             )
         ),
-        "tools": {"plink2": str(plink2.resolve()), "plink2_version": version(plink2)},
+        "tools": {
+            "plink2": str(plink2.resolve()),
+            "plink2_version": version(plink2),
+            "bolt": str(resolved_bolt.resolve()) if resolved_bolt is not None else None,
+            "bolt_version": (
+                bolt_version(resolved_bolt) if resolved_bolt is not None else None
+            ),
+        },
     }
     write_json(output / "run_manifest.json", manifest)
     progress("Writing interactive HTML report")
@@ -144,6 +191,20 @@ def run_gim(
             "LD reference prefix": str(ld_bfile.resolve()),
             "Individual-level genotype": str(bfile.resolve()),
             "PLINK2": version(plink2),
+            "Genetic model": parameters.genetic_model,
+            "Regression model": (
+                "linear (PLINK2)"
+                if parameters.regression_model == "linear"
+                else "mixed, infinitesimal (BOLT-LMM)"
+            ),
+            "Mixed-model genotype": (
+                str(resolved_bolt_model_bfile.resolve())
+                if resolved_bolt_model_bfile is not None
+                else "not used"
+            ),
+            "BOLT-LMM": (
+                bolt_version(resolved_bolt) if resolved_bolt is not None else "not used"
+            ),
             "Sentinel P threshold": parameters.sentinel_p,
             "Sentinel clumping": (
                 "precomputed trait-specific leaders"

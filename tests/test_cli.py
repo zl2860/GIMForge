@@ -74,6 +74,65 @@ class CliTests(unittest.TestCase):
         self.assertIsNone(args.sumstats_manifest)
         self.assertEqual(args.sentinels, "clumping/sentinels.tsv")
 
+    def test_run_exposes_genetic_and_regression_models(self):
+        args = build_parser().parse_args(
+            [
+                "run",
+                "--sentinels",
+                "clumping/sentinels.tsv",
+                "--bfile",
+                "data/cohort",
+                "--ld-bfile",
+                "reference/EAS",
+                "--ancestry",
+                "EAS",
+                "--phenotypes",
+                "data/phenotypes.tsv",
+                "--covariates",
+                "data/covariates.tsv",
+                "--out",
+                "result",
+                "--genetic-model",
+                "dominant",
+                "--regression-model",
+                "linear",
+            ]
+        )
+        self.assertEqual(args.genetic_model, "dominant")
+        self.assertEqual(args.regression_model, "linear")
+
+    def test_mixed_run_accepts_bolt_inputs(self):
+        args = build_parser().parse_args(
+            [
+                "run",
+                "--sentinels",
+                "clumping/sentinels.tsv",
+                "--bfile",
+                "data/cohort",
+                "--ld-bfile",
+                "reference/EAS",
+                "--ancestry",
+                "EAS",
+                "--phenotypes",
+                "data/phenotypes.tsv",
+                "--covariates",
+                "data/covariates.tsv",
+                "--out",
+                "result",
+                "--regression-model",
+                "mixed",
+                "--bolt",
+                "/opt/bolt/bolt",
+                "--bolt-model-bfile",
+                "data/cohort",
+                "--bolt-genetic-map",
+                "reference/genetic_map_hg38.txt.gz",
+            ]
+        )
+        self.assertEqual(args.regression_model, "mixed")
+        self.assertEqual(args.bolt, "/opt/bolt/bolt")
+        self.assertEqual(args.bolt_model_bfile, "data/cohort")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -31,6 +31,9 @@ class GIMParameters:
     threads: int = 1
     metabolite_batch_size: int = 1
     force_single_forward_lead: bool = True
+    genetic_model: str = "additive"
+    regression_model: str = "linear"
+    mixed_backend: str = "bolt-lmm"
 
     def validate(self) -> "GIMParameters":
         for name in (
@@ -58,6 +61,17 @@ class GIMParameters:
                 raise ValueError(f"{name} must be positive.")
         if self.geno_missing_max is not None and not 0 <= self.geno_missing_max < 1:
             raise ValueError("geno_missing_max must be in [0, 1), or None.")
+        if self.genetic_model not in {"additive", "dominant", "recessive"}:
+            raise ValueError("genetic_model must be additive, dominant, or recessive.")
+        if self.regression_model not in {"linear", "mixed"}:
+            raise ValueError("regression_model must be linear or mixed.")
+        if self.mixed_backend != "bolt-lmm":
+            raise ValueError("mixed_backend currently supports only bolt-lmm.")
+        if self.regression_model == "mixed" and self.genetic_model != "additive":
+            raise ValueError(
+                "BOLT-LMM tests additive allele dosage only. Use regression_model='linear' "
+                "for dominant or recessive conditional analysis."
+            )
         return self
 
     def to_dict(self) -> dict[str, Any]:

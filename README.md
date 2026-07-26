@@ -24,6 +24,7 @@ flowchart LR
 
     G["Individual-level genotype"] --> F["Forward conditional analysis<br/>for every metabolite in M_R"]
     P["Metabolite phenotypes + covariates"] --> F
+    C["Genetic model + regression model"] --> F
     MR --> F
     F --> B["Full-model pruning"]
     B --> VR["Union of independent variants V_R"]
@@ -65,6 +66,8 @@ run the upstream mGWAS.
 | `--bfile` | PLINK 1 BED/BIM/FAM prefix | Individual-level conditional association models. |
 | `--phenotypes` | Uncompressed, headered, tab-separated text | Quantitative molecular traits analysed in each region. |
 | `--covariates` | Uncompressed, headered, tab-separated text | Covariates included in every individual-level conditional model. |
+| `--bolt-model-bfile` | Genome-wide PLINK 1 BED/BIM/FAM prefix; optional and defaults to `--bfile` | Polygenic random effect when `--regression-model mixed`. |
+| `--bolt-genetic-map` | BOLT-LMM genetic-map file matching the genotype build; mixed model only | LOCO mixed-model genetic positions. |
 
 For summary statistics, a filename ending in `.csv` or `.csv.gz` is parsed as
 comma-separated. Every other summary-statistic filename, including `.tsv`,
@@ -247,7 +250,7 @@ F001	S001	0	0	1	-9
 ```
 
 The phenotype stored in the sixth FAM column is ignored; molecular phenotypes
-come from `--phenotypes`. Version 0.1 accepts hard-call BED input. It filters
+come from `--phenotypes`. Version 0.2 accepts hard-call BED input. It filters
 to autosomal biallelic A/C/G/T SNPs and applies `--mac-min`; optional genotype
 missingness filtering is controlled by `--geno-missing-max`.
 
@@ -339,18 +342,30 @@ gimforge doctor
 ```
 
 GIMForge requires Python 3.10+ and PLINK2. It has no third-party Python runtime
-dependencies. Every `gimforge run` checks PLINK2 before starting. If PLINK2 is
-missing, GIMForge prints an installation link and explains how to supply
-`--plink2 /absolute/path/to/plink2`.
+dependencies. BOLT-LMM is optional and is checked only when
+`--regression-model mixed` is requested. Every `gimforge run` checks the
+dependencies needed by the selected model before starting. Missing software is
+reported with an installation link and the corresponding explicit path option.
 
 ```bash
 gimforge doctor --plink2 /opt/plink2/plink2
 ```
 
+Check the optional mixed-model environment:
+
+```bash
+gimforge doctor \
+  --regression-model mixed \
+  --plink2 /opt/plink2/plink2 \
+  --bolt /opt/BOLT-LMM/bolt
+```
+
 All commands print timestamped stage progress by default. `run`, `clump`, and
 `components` mirror the same messages to `OUT/run.log`; report regeneration
-appends to `RESULTS/run.log`. `--verbose` additionally exposes PLINK2 output
-for diagnosing a failed statistical step.
+appends to `RESULTS/run.log`. The selected genetic coding and regression model
+are printed at startup and recorded in `run_manifest.json` and `report.html`.
+`--verbose` additionally exposes PLINK2 or BOLT-LMM output for diagnosing a
+failed statistical step.
 
 ## Run clumping only
 
@@ -410,6 +425,8 @@ gimforge run \
   --bfile data/cohort_genotypes \
   --phenotypes data/metabolite_phenotypes.tsv \
   --covariates data/covariates.tsv \
+  --genetic-model additive \
+  --regression-model linear \
   --plink2 /opt/plink2/plink2 \
   --threads 8 \
   --out results/gimforge
@@ -487,20 +504,78 @@ gimforge components \
 | `--conditional-p` | `1.24741348813236e-8` | Forward selection, full-model retention, matrix edges, and GIM membership. |
 | `--mac-min` | `10` | Minimum allele count in conditional analysis. |
 | `--metabolite-batch-size` | `1` | Bounds peak temporary-report size without changing fitted models. |
+| `--genetic-model` | `additive` | Coding applied consistently to tested and conditioning variants: `additive`, `dominant`, or `recessive`. |
+| `--regression-model` | `linear` | Conditional regression: `linear` (PLINK2) or `mixed` (BOLT-LMM-inf). |
+| `--mixed-backend` | `bolt-lmm` | Mixed-model engine; currently BOLT-LMM. |
 
-Every override is recorded in `run_manifest.json`. Temporary PLINK reports,
-condition lists, and extract lists are held in a private temporary directory,
-read immediately, and deleted. The genotype files are never copied.
+Every override is recorded in `run_manifest.json`. Temporary reports,
+condition lists, extract lists, and mixed-model regional BGEN files are held in
+a private temporary directory, read immediately, and deleted. The complete
+genotype files are never copied.
 
-## Conditional model and GCTA
+## Conditional association models
 
-GCTA is not required. The method conditions on individual-level genotypes:
-regional additive linear models are fitted with the supplied covariates,
-selected SNPs are entered as conditioning variables, and all forward-selected
-signals are tested together before constructing the ordered matrix. GIMForge uses
-PLINK2 for these individual-level regressions and small in-memory linear-model
-calculations where needed; it does not substitute summary-statistic COJO for
-the conditional procedure.
+Genetic coding and regression model are selected separately, subject to this
+compatibility matrix:
+
+| Regression model | Additive | Dominant | Recessive | Engine |
+| --- | --- | --- | --- | --- |
+| `linear` | supported | supported | supported | PLINK2 `--glm` |
+| `mixed` | supported | not supported by BOLT-LMM | not supported by BOLT-LMM | BOLT-LMM-inf |
+
+For linear regression, the requested coding is applied to both the SNP being
+tested and every SNP already entered as a conditioning covariate. Thus a
+dominant run is dominant throughout forward selection, full-model pruning, and
+the ordered matrix; the same rule applies to a recessive run. PLINK2 defines
+dominant A1 dosage as `0/1/1` and recessive A1 dosage as `0/0/1`.
+
+```bash
+# Dominant conditional analysis
+gimforge run ... \
+  --regression-model linear \
+  --genetic-model dominant
+
+# Recessive conditional analysis
+gimforge run ... \
+  --regression-model linear \
+  --genetic-model recessive
+```
+
+The reference workflow used BOLT-LMM for the upstream cohort mGWAS, but its
+exact conditional stage used SNPTEST expected allele dosage with
+`-frequentist 1`, followed by ordinary linear models of selected dosages. The
+default `linear + additive` configuration follows that conditional model. See
+the authors'
+[conditional-analysis script](https://github.com/MRC-Epid/MetabolomicsGWAS_INTERVAL_EPICNorfolk/blob/main/3_METABOLITE_SPECIFIC_CONDITIONAL_ANALYSIS.R).
+
+The optional mixed model uses the infinitesimal BOLT-LMM statistic with a
+genome-wide LOCO polygenic random effect. It requires the BOLT executable, a
+genome-build-matched genetic map, and a genome-wide PLINK genotype prefix for
+model fitting. `--bolt-model-bfile` defaults to `--bfile`.
+
+```bash
+gimforge run ... \
+  --regression-model mixed \
+  --genetic-model additive \
+  --bolt /opt/BOLT-LMM/bolt \
+  --bolt-model-bfile data/cohort_genotypes \
+  --bolt-genetic-map reference/genetic_map_hg38.txt.gz
+```
+
+BOLT-LMM does not implement dominant or recessive association tests, so those
+mixed-model combinations stop with an explicit error instead of silently
+changing the genetic model. BOLT-LMM is refitted as conditioning covariates
+change; this is computationally much heavier than the linear workflow. Only
+the regional variants being tested are exported to a small temporary BGEN, and
+the genome-wide model-scan output is discarded to limit disk use.
+
+BOLT-LMM's authors recommend it for human datasets with more than 5,000
+samples. GIMForge prints a warning below that threshold; the default linear
+model remains available, while GCTA/GEMMA mixed backends can be added later
+without changing the output schema.
+
+GCTA is not required. GIMForge does not substitute summary-statistic COJO for
+individual-level conditional regression.
 
 ## Why singleton GIMs can dominate
 
@@ -531,8 +606,8 @@ metabolites first, while the complete component distribution remains in
 
 ## Current backend
 
-Version 0.1 accepts PLINK BED/BIM/FAM input and uses PLINK2 for LD and
-individual-level additive conditional regression. Hard-call BED input does not
-contain imputation INFO; this limitation is explicitly recorded in the
-manifest. Expected-dosage BGEN support can be added without changing the GIM
-definition.
+Version 0.2 accepts PLINK BED/BIM/FAM input, uses PLINK2 for LD and linear
+conditional regression, and optionally uses BOLT-LMM-inf for additive mixed
+conditional regression. Hard-call BED input does not contain imputation INFO;
+this limitation is explicitly recorded in the manifest. Expected-dosage BGEN
+input can be added without changing the GIM definition.

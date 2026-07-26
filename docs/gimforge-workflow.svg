@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1040" viewBox="0 0 1600 1040" role="img" aria-labelledby="title desc">
   <title id="title">GIMForge workflow for defining genetically influenced metabotypes</title>
-  <desc id="desc">mGWAS summary statistics and an LD reference panel define regions. Individual genotype, metabolite phenotypes, and covariates are used for forward conditional analysis and full-model pruning. An ordered SNP by metabolite conditional matrix is converted to significant bipartite components called GIMs.</desc>
+  <desc id="desc">mGWAS summary statistics and an LD reference panel define regions. Individual genotype, metabolite phenotypes, covariates, genetic coding, and regression model are used for forward conditional analysis and full-model pruning. An ordered SNP by metabolite conditional matrix is converted to significant bipartite components called GIMs.</desc>
   <defs>
     <linearGradient id="header" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#102a43"/>
@@ -71,7 +71,7 @@
     <path d="M1154 190 L1161 186 M1165 188 L1167 195 M1154 192 L1164 198" stroke="#fff" stroke-width="2"/>
     <text class="input-title" x="1192" y="180">Individual-level analysis data</text>
     <text class="input-body" x="1192" y="204">genotype + metabolite phenotypes</text>
-    <text class="input-body" x="1192" y="226">+ identical model covariates</text>
+    <text class="input-body" x="1192" y="226">+ covariates + model configuration</text>
   </g>
 
   <path class="arrow" d="M270 255 L270 295"/>
@@ -114,9 +114,9 @@
   <g filter="url(#shadow)">
     <rect class="card" x="594" y="378" width="410" height="124" rx="13"/>
     <text class="step" x="615" y="407">Forward conditional analysis</text>
-    <text class="body" x="615" y="435">For each metabolite in M<tspan baseline-shift="sub" font-size="11">R</tspan>, scan every QC SNP</text>
-    <text class="body" x="615" y="461">in the region; add the strongest significant SNP,</text>
-    <text class="body" x="615" y="485">then repeat while conditioning on earlier SNPs.</text>
+    <text class="body" x="615" y="435">Coding: additive · dominant · recessive</text>
+    <text class="body" x="615" y="461">Regression: linear; optional additive BOLT-LMM-inf</text>
+    <text class="body" x="615" y="485">Select strongest SNP; repeat conditional on earlier SNPs.</text>
   </g>
   <path class="arrow" d="M799 502 L799 536"/>
   <g filter="url(#shadow)">

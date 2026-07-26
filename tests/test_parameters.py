@@ -31,6 +31,32 @@ class ParameterTests(unittest.TestCase):
                 }
             )
 
+    def test_linear_models_support_three_genotype_encodings(self):
+        for genetic_model in ("additive", "dominant", "recessive"):
+            parameters = parameters_from_args(
+                {
+                    "regression_model": "linear",
+                    "genetic_model": genetic_model,
+                }
+            )
+            self.assertEqual(parameters.genetic_model, genetic_model)
+
+    def test_bolt_mixed_model_is_explicitly_additive_only(self):
+        parameters = parameters_from_args(
+            {
+                "regression_model": "mixed",
+                "genetic_model": "additive",
+            }
+        )
+        self.assertEqual(parameters.mixed_backend, "bolt-lmm")
+        with self.assertRaisesRegex(ValueError, "additive allele dosage only"):
+            parameters_from_args(
+                {
+                    "regression_model": "mixed",
+                    "genetic_model": "recessive",
+                }
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

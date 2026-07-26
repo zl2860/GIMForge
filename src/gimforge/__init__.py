@@ -12,4 +12,4 @@ __all__ = [
     "clump_sentinels",
     "components_from_matrix",
 ]
-__version__ = "0.1.0"
+__version__ = "0.2.0"
