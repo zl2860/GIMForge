@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1040" viewBox="0 0 1600 1040" role="img" aria-labelledby="title desc">
-  <title id="title">GIMForge workflow for defining genetically influenced modules</title>
+  <title id="title">GIMForge workflow for defining genetically influenced metabotypes</title>
   <desc id="desc">mGWAS summary statistics and an LD reference panel define regions. Individual genotype, metabolite phenotypes, and covariates are used for forward conditional analysis and full-model pruning. An ordered SNP by metabolite conditional matrix is converted to significant bipartite components called GIMs.</desc>
   <defs>
     <linearGradient id="header" x1="0" y1="0" x2="1" y2="1">
@@ -43,7 +43,7 @@
   <rect width="1600" height="1040" rx="24" fill="#f3f7fa"/>
   <rect x="0" y="0" width="1600" height="125" rx="24" fill="url(#header)"/>
   <rect x="0" y="96" width="1600" height="29" fill="url(#header)"/>
-  <text class="title" x="70" y="57">GIMForge: building genetically influenced modules</text>
+  <text class="title" x="70" y="57">GIMForge: building genetically influenced metabotypes</text>
   <text class="subtitle" x="72" y="91">Region definition → conditional genetic signals → ordered SNP × metabolite matrix → connected components</text>
 
   <!-- Inputs -->
@@ -137,7 +137,7 @@
   </g>
 
   <rect x="1103" y="324" width="44" height="28" rx="14" fill="#e76f51"/><text class="badge" x="1121" y="343">3</text>
-  <text class="lane-title" x="1160" y="346">Define GIM components</text>
+  <text class="lane-title" x="1160" y="346">Define GIMs (metabotypes)</text>
   <g filter="url(#shadow)">
     <rect class="card" x="1111" y="378" width="410" height="108" rx="13"/>
     <text class="step" x="1132" y="407">Threshold conditional matrix edges</text>
@@ -168,7 +168,7 @@
     <path d="M1172 783 L1283 769 M1172 783 L1283 805 M1172 819 L1283 805" stroke="#66788a" stroke-width="2"/>
     <text class="small" x="1322" y="775">co-regulated</text>
     <text class="small" x="1322" y="797">SNP–metabolite</text>
-    <text class="small" x="1322" y="819">module</text>
+    <text class="small" x="1322" y="819">metabotype</text>
   </g>
 
   <!-- Across-lane connectors -->

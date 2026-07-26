@@ -118,7 +118,7 @@ def write_report(
     .matrix-panel,.detail-panel,.provenance{border:1px solid var(--line);border-radius:7px;background:#fff;box-shadow:0 2px 7px rgba(21,55,63,.04)}
     .matrix-header{min-height:110px;padding:17px 19px;display:flex;justify-content:space-between;gap:20px;border-bottom:1px solid var(--line)}
     .eyebrow{margin:0 0 3px;color:var(--teal);font-size:10px;font-weight:800;letter-spacing:.12em}.gim-heading h1{margin:0;font-size:25px;letter-spacing:-.03em}.locus{margin:6px 0 0;color:var(--muted);font-size:12px}
-    .header-right{display:flex;align-items:center;justify-content:flex-end;gap:22px;flex-wrap:wrap}.module-summary{display:flex;gap:17px}.module-summary span{display:grid;color:var(--muted);font-size:10px;text-align:center}.module-summary b{color:var(--ink);font-size:19px}
+    .header-right{display:flex;align-items:center;justify-content:flex-end;gap:22px;flex-wrap:wrap}.gim-summary{display:flex;gap:17px}.gim-summary span{display:grid;color:var(--muted);font-size:10px;text-align:center}.gim-summary b{color:var(--ink);font-size:19px}
     .gim-choice{display:grid;gap:3px;color:var(--muted);font-size:9px;font-weight:750}.gim-choice select{width:min(360px,46vw);padding:7px 9px;border:1px solid #bfcfd3;border-radius:4px;background:#fff;color:var(--ink);font-size:11px}
     .toolbar{min-height:43px;padding:7px 14px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--line);background:#fbfdfd}
     .tabs{display:flex;border:1px solid #c8d7da;border-radius:4px;padding:2px}.tabs button{border:0;border-radius:3px;background:transparent;color:#587077;padding:5px 8px;font-size:10px;font-weight:750}.tabs button.active{background:var(--teal-dark);color:#fff}
@@ -137,13 +137,13 @@ def write_report(
     .provenance{max-width:1800px;margin:12px auto 0;overflow:hidden}.provenance summary{cursor:pointer;padding:11px 14px;color:#46636a;font-size:11px;font-weight:760}.provenance table{width:100%;border-collapse:collapse;font-size:10px}.provenance th,.provenance td{padding:7px 14px;border-top:1px solid var(--line);text-align:left}.provenance th{width:230px;color:var(--muted);font-weight:650}
     .empty{color:var(--muted);padding:28px}
     @media(max-width:1050px){.workbench{grid-template-columns:1fr}.detail-panel{min-height:0}.empty-detail{min-height:180px}.heatmap-scroll{max-height:none}.caption,.legend b{display:none}}
-    @media(max-width:680px){.masthead{padding:0 12px}.dataset-metrics{display:none}main{padding:0}.matrix-panel,.detail-panel,.provenance{border-radius:0;border-left:0;border-right:0}.matrix-header{flex-direction:column}.header-right{justify-content:start}.gim-choice,.gim-choice select{width:100%}.module-summary{display:none}.toolbar{flex-wrap:wrap}.legend{display:none}.heatmap-scroll{padding:10px}.provenance{margin-top:0}}
+    @media(max-width:680px){.masthead{padding:0 12px}.dataset-metrics{display:none}main{padding:0}.matrix-panel,.detail-panel,.provenance{border-radius:0;border-left:0;border-right:0}.matrix-header{flex-direction:column}.header-right{justify-content:start}.gim-choice,.gim-choice select{width:100%}.gim-summary{display:none}.toolbar{flex-wrap:wrap}.legend{display:none}.heatmap-scroll{padding:10px}.provenance{margin-top:0}}
   </style>
 </head>
 <body>
   <header class="masthead">
     <div class="brand"><span class="brand-mark"><i></i><i></i><i></i></span><span>GIM<em>Forge</em></span></div>
-    <p class="caption">Conditional genetic influence modules in metabolite genetics</p>
+    <p class="caption">Genetically influenced metabotypes from conditional metabolite genetics</p>
     <div class="dataset-metrics"><span><b id="n-gims">0</b> GIMs</span><span><b id="n-snps">0</b> independent SNPs</span><span><b id="n-metabolites">0</b> metabolites</span></div>
   </header>
   <main>
@@ -152,7 +152,7 @@ def write_report(
         <header class="matrix-header">
           <div class="gim-heading"><p class="eyebrow">CONDITIONALLY INDEPENDENT GIM</p><h1 id="gim-title">No GIM</h1><p class="locus" id="locus">No significant component</p></div>
           <div class="header-right">
-            <div class="module-summary"><span><b id="module-snps">0</b>independent SNPs</span><span><b id="module-metabolites">0</b>metabolites</span><span><b id="module-edges">0</b>retained associations</span></div>
+            <div class="gim-summary"><span><b id="gim-snps">0</b>independent SNPs</span><span><b id="gim-metabolites">0</b>metabolites</span><span><b id="gim-edges">0</b>retained associations</span></div>
             <label class="gim-choice">CHOOSE GIM<select id="gim-select" aria-label="Choose GIM"></select></label>
           </div>
         </header>
@@ -214,9 +214,9 @@ function renderHeatmap(item,resetDetail=true){
   const betas=rows.map(x=>numeric(x.beta)).filter(x=>x!==null),maxAbs=Math.max(...betas.map(Math.abs),.01);
   document.querySelector('#gim-title').textContent=item.gim_id;
   document.querySelector('#locus').innerHTML=`${esc(regionLabel(item.region_id))} · P<sub>min</sub> ${pFormat(item.minP)}`;
-  document.querySelector('#module-snps').textContent=snps.length;
-  document.querySelector('#module-metabolites').textContent=metabolites.length;
-  document.querySelector('#module-edges').textContent=item.nEdges;
+  document.querySelector('#gim-snps').textContent=snps.length;
+  document.querySelector('#gim-metabolites').textContent=metabolites.length;
+  document.querySelector('#gim-edges').textContent=item.nEdges;
   const cellSize=Math.max(22,Math.round(42*zoom)),labelWidth=Math.round(166*Math.max(zoom,.88)),longest=Math.max(12,...metabolites.map(x=>String(x).length)),headerHeight=Math.max(150,Math.min(330,Math.ceil(longest*7.3+26)));
   let out=`<div class="heatmap-grid" style="--cols:${metabolites.length};--rows:${snps.length};--cell:${cellSize}px;--label:${labelWidth}px;--header:${headerHeight}px"><div class="corner"><span>Metabolites →</span><b>Independent SNPs ↓</b></div>`;
   out+=metabolites.map(m=>`<div class="column-label" title="${esc(m)}"><span>${esc(m)}</span></div>`).join('');

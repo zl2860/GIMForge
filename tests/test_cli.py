@@ -4,6 +4,9 @@ from gimforge.cli import build_parser
 
 
 class CliTests(unittest.TestCase):
+    def test_gim_expansion_is_metabotype(self):
+        self.assertIn("genetically influenced metabotypes", build_parser().description.lower())
+
     def test_clump_subcommand_exposes_reference_and_clump_controls(self):
         args = build_parser().parse_args(
             [

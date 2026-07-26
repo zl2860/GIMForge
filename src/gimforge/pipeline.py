@@ -100,7 +100,7 @@ def run_gim(
     progress("Writing result tables")
     _write_result(output, result)  # type: ignore[arg-type]
     manifest = {
-        "method": "GIMForge — Genetically Influenced Module Forge",
+        "method": "GIMForge — Genetically Influenced Metabotypes",
         "reference": "Surendran et al., Nature Medicine 2022, DOI: 10.1038/s41591-022-02046-0",
         "mGWAS": (
             "Precomputed trait-specific clump leaders were used for region definition; no GWAS or sentinel clumping was run."

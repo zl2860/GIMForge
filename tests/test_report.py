@@ -54,6 +54,7 @@ class ReportTests(unittest.TestCase):
             )
             report = path.read_text()
         self.assertIn("Retained GIM associations only", report)
+        self.assertIn("Genetically influenced metabotypes", report)
         self.assertIn("Colour encodes conditional β", report)
         self.assertIn("LD reference ancestry</th><td>EAS", report)
         self.assertNotIn("<h2>All GIMs</h2>", report)

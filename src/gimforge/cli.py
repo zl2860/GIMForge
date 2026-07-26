@@ -109,7 +109,7 @@ def _write_component_result(
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="gimforge", description="Define genetically influenced modules from supplied mGWAS summaries and individual-level data.")
+    parser = argparse.ArgumentParser(prog="gimforge", description="Define genetically influenced metabotypes from supplied mGWAS summaries and individual-level data.")
     subparsers = parser.add_subparsers(dest="command", required=True)
     clump_parser = subparsers.add_parser("clump", help="select trait-specific sentinel variants with an explicit LD reference panel")
     clump_sumstats = clump_parser.add_mutually_exclusive_group(required=True)

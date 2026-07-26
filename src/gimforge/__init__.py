@@ -1,4 +1,4 @@
-"""GIMForge: Genetically Influenced Module Forge."""
+"""GIMForge: construction of Genetically Influenced Metabotypes."""
 
 from .parameters import GIMParameters, parameters_from_args
 from .pipeline import run_gim

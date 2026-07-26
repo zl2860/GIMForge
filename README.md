@@ -1,18 +1,16 @@
 # GIMForge
 
-**GIMForge** (Genetically Influenced Module Forge) defines regional,
-genetically co-regulated SNP–metabolite modules following Surendran et al.,
-*Nature Medicine* (2022), DOI
+**GIMForge** constructs **GIMs (Genetically Influenced Metabotypes)**:
+regional sets of metabolites influenced by conditionally independent genetic
+variants, following Surendran et al., *Nature Medicine* (2022), DOI
 [10.1038/s41591-022-02046-0](https://doi.org/10.1038/s41591-022-02046-0).
-The name is intentionally omics-neutral so the same module-building framework
-can later support other quantitative molecular phenotypes.
 
 GIMForge does **not** run mGWAS. Existing mGWAS summary statistics are used only
 to seed candidate regions. GIMs are then defined from individual-level
 genotype, prepared metabolite phenotypes, covariates, and a population-matched
 LD reference panel.
 
-![GIMForge workflow: region definition, conditional signals, ordered SNP by metabolite matrix, and GIM components](docs/gimforge-workflow.svg)
+![GIMForge workflow: region definition, conditional signals, ordered SNP by metabolite matrix, and genetically influenced metabotypes](docs/gimforge-workflow.svg)
 
 ## How a GIM is defined
 
