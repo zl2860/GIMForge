@@ -1,0 +1,75 @@
+"""Default GIM parameters and explicit, auditable overrides."""
+
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass, fields
+from typing import Any, Mapping
+
+
+@dataclass(frozen=True)
+class GIMParameters:
+    """Parameters used by the GIM workflow.
+
+    The defaults reproduce the reference locus and conditional-analysis rules.
+    Some genotype-QC details necessarily depend on the supplied genotype
+    representation. The PLINK1 BED backend uses MAC filtering and reports that
+    distinction in the run manifest; it cannot recover imputation INFO from a
+    hard-call BED file.
+    """
+
+    sentinel_p: float = 1.25e-11
+    conditional_p: float = 1.24741348813236e-8
+    sentinel_clump_r2: float = 0.1
+    sentinel_clump_window_kb: int = 1_000_000
+    ld_span_r2: float = 0.1
+    cross_metabolite_merge_r2: float = 0.6
+    ld_window_kb: int = 1_000_000
+    no_ld_half_width_kb: int = 500
+    region_padding_kb: int = 250
+    mac_min: int = 10
+    geno_missing_max: float | None = None
+    threads: int = 1
+    metabolite_batch_size: int = 1
+    force_single_forward_lead: bool = True
+
+    def validate(self) -> "GIMParameters":
+        for name in (
+            "sentinel_p",
+            "conditional_p",
+            "sentinel_clump_r2",
+            "ld_span_r2",
+            "cross_metabolite_merge_r2",
+        ):
+            value = getattr(self, name)
+            if not 0 < value < 1:
+                raise ValueError(f"{name} must lie strictly between 0 and 1.")
+        if self.cross_metabolite_merge_r2 <= self.ld_span_r2:
+            raise ValueError("cross_metabolite_merge_r2 must be stricter than ld_span_r2.")
+        for name in (
+            "sentinel_clump_window_kb",
+            "ld_window_kb",
+            "no_ld_half_width_kb",
+            "region_padding_kb",
+            "mac_min",
+            "threads",
+            "metabolite_batch_size",
+        ):
+            if getattr(self, name) < 1:
+                raise ValueError(f"{name} must be positive.")
+        if self.geno_missing_max is not None and not 0 <= self.geno_missing_max < 1:
+            raise ValueError("geno_missing_max must be in [0, 1), or None.")
+        return self
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+def parameters_from_args(overrides: Mapping[str, Any] | None = None) -> GIMParameters:
+    """Build validated GIM parameters, rejecting misspelled overrides."""
+
+    overrides = dict(overrides or {})
+    permitted = {item.name for item in fields(GIMParameters)}
+    unknown = set(overrides).difference(permitted)
+    if unknown:
+        raise ValueError(f"Unknown GIM parameter(s): {', '.join(sorted(unknown))}")
+    return GIMParameters(**overrides).validate()

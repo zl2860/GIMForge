@@ -1,0 +1,183 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1040" viewBox="0 0 1600 1040" role="img" aria-labelledby="title desc">
+  <title id="title">GIMForge workflow for defining genetically influenced modules</title>
+  <desc id="desc">mGWAS summary statistics and an LD reference panel define regions. Individual genotype, metabolite phenotypes, and covariates are used for forward conditional analysis and full-model pruning. An ordered SNP by metabolite conditional matrix is converted to significant bipartite components called GIMs.</desc>
+  <defs>
+    <linearGradient id="header" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#102a43"/>
+      <stop offset="1" stop-color="#174d5e"/>
+    </linearGradient>
+    <linearGradient id="regionLane" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e6f4ff"/>
+      <stop offset="1" stop-color="#f5fbff"/>
+    </linearGradient>
+    <linearGradient id="conditionLane" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#e9f8f4"/>
+      <stop offset="1" stop-color="#f6fcfa"/>
+    </linearGradient>
+    <linearGradient id="gimLane" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff1e8"/>
+      <stop offset="1" stop-color="#fffaf6"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="5" stdDeviation="8" flood-color="#102a43" flood-opacity=".13"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#486581"/>
+    </marker>
+    <style>
+      .title { font: 700 36px Arial, sans-serif; fill: #fff; }
+      .subtitle { font: 400 18px Arial, sans-serif; fill: #d9eaf0; }
+      .lane-title { font: 700 23px Arial, sans-serif; fill: #102a43; }
+      .step { font: 700 17px Arial, sans-serif; fill: #102a43; }
+      .body { font: 400 15px Arial, sans-serif; fill: #334e68; }
+      .small { font: 400 13px Arial, sans-serif; fill: #486581; }
+      .input-title { font: 700 16px Arial, sans-serif; fill: #102a43; }
+      .input-body { font: 400 13px Arial, sans-serif; fill: #486581; }
+      .badge { font: 700 13px Arial, sans-serif; fill: #fff; }
+      .formula { font: 700 16px Arial, sans-serif; fill: #7c2d12; }
+      .card { fill: #fff; stroke: #bcccdc; stroke-width: 1.4; }
+      .arrow { fill: none; stroke: #486581; stroke-width: 2.5; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1040" rx="24" fill="#f3f7fa"/>
+  <rect x="0" y="0" width="1600" height="125" rx="24" fill="url(#header)"/>
+  <rect x="0" y="96" width="1600" height="29" fill="url(#header)"/>
+  <text class="title" x="70" y="57">GIMForge: building genetically influenced modules</text>
+  <text class="subtitle" x="72" y="91">Region definition → conditional genetic signals → ordered SNP × metabolite matrix → connected components</text>
+
+  <!-- Inputs -->
+  <g filter="url(#shadow)">
+    <rect class="card" x="60" y="155" width="420" height="100" rx="14"/>
+    <circle cx="98" cy="193" r="20" fill="#247ba0"/>
+    <path d="M87 198 L94 190 L101 196 L111 181" fill="none" stroke="#fff" stroke-width="3"/>
+    <text class="input-title" x="132" y="187">mGWAS summary statistics</text>
+    <text class="input-body" x="132" y="211">metabolite · chromosome · position · SNP · P</text>
+    <text class="input-body" x="132" y="233">Used only to seed candidate regions</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect class="card" x="590" y="155" width="420" height="100" rx="14"/>
+    <circle cx="628" cy="193" r="20" fill="#2a9d8f"/>
+    <path d="M618 183 C632 183 632 203 642 203 M618 203 C632 203 632 183 642 183" fill="none" stroke="#fff" stroke-width="2.6"/>
+    <text class="input-title" x="662" y="180">LD reference panel</text>
+    <text class="input-body" x="662" y="203">Select AFR · AMR · EAS · EUR · SAS</text>
+    <text class="input-body" x="662" y="224">Population-matched PLINK BED/BIM/FAM</text>
+    <text class="input-body" x="662" y="245">Sentinel clumping and locus geometry</text>
+  </g>
+  <g filter="url(#shadow)">
+    <rect class="card" x="1120" y="155" width="420" height="100" rx="14"/>
+    <circle cx="1158" cy="193" r="20" fill="#e76f51"/>
+    <circle cx="1151" cy="189" r="4" fill="#fff"/><circle cx="1164" cy="184" r="4" fill="#fff"/><circle cx="1167" cy="199" r="4" fill="#fff"/>
+    <path d="M1154 190 L1161 186 M1165 188 L1167 195 M1154 192 L1164 198" stroke="#fff" stroke-width="2"/>
+    <text class="input-title" x="1192" y="180">Individual-level analysis data</text>
+    <text class="input-body" x="1192" y="204">genotype + metabolite phenotypes</text>
+    <text class="input-body" x="1192" y="226">+ identical model covariates</text>
+  </g>
+
+  <path class="arrow" d="M270 255 L270 295"/>
+  <path class="arrow" d="M800 255 L800 295"/>
+  <path class="arrow" d="M1330 255 L1330 295"/>
+
+  <!-- Lanes -->
+  <rect x="45" y="300" width="475" height="610" rx="20" fill="url(#regionLane)" stroke="#9cc8e5" stroke-width="1.5"/>
+  <rect x="562" y="300" width="475" height="610" rx="20" fill="url(#conditionLane)" stroke="#9dd6c9" stroke-width="1.5"/>
+  <rect x="1079" y="300" width="475" height="610" rx="20" fill="url(#gimLane)" stroke="#f1b59f" stroke-width="1.5"/>
+
+  <rect x="69" y="324" width="44" height="28" rx="14" fill="#247ba0"/><text class="badge" x="87" y="343">1</text>
+  <text class="lane-title" x="126" y="346">Define candidate regions</text>
+  <g filter="url(#shadow)">
+    <rect class="card" x="77" y="378" width="410" height="104" rx="13"/>
+    <text class="step" x="98" y="407">Metabolite-specific sentinel selection</text>
+    <text class="body" x="98" y="434">Keep associations at the configured P threshold</text>
+    <text class="body" x="98" y="458">and retain LD-clump leaders for each metabolite.</text>
+  </g>
+  <path class="arrow" d="M282 482 L282 516"/>
+  <g filter="url(#shadow)">
+    <rect class="card" x="77" y="518" width="410" height="135" rx="13"/>
+    <text class="step" x="98" y="548">Construct sentinel LD spans</text>
+    <text class="body" x="98" y="577">LD neighbours: span variants with r² ≥ 0.1</text>
+    <text class="body" x="98" y="603">No LD neighbour: use sentinel ±500 kb</text>
+    <text class="small" x="98" y="630">LD is calculated in the reference panel.</text>
+  </g>
+  <path class="arrow" d="M282 653 L282 687"/>
+  <g filter="url(#shadow)">
+    <rect class="card" x="77" y="689" width="410" height="152" rx="13"/>
+    <text class="step" x="98" y="719">Merge signals into final regions</text>
+    <text class="body" x="98" y="748">Merge cross-metabolite sentinels at r² &gt; 0.6</text>
+    <text class="body" x="98" y="774">Extend merged spans by 250 kb</text>
+    <text class="body" x="98" y="800">Iteratively merge overlapping extended regions</text>
+    <text class="formula" x="98" y="827">Output: region R and metabolites M<tspan baseline-shift="sub" font-size="12">R</tspan></text>
+  </g>
+
+  <rect x="586" y="324" width="44" height="28" rx="14" fill="#2a9d8f"/><text class="badge" x="604" y="343">2</text>
+  <text class="lane-title" x="643" y="346">Resolve independent signals</text>
+  <g filter="url(#shadow)">
+    <rect class="card" x="594" y="378" width="410" height="124" rx="13"/>
+    <text class="step" x="615" y="407">Forward conditional analysis</text>
+    <text class="body" x="615" y="435">For each metabolite in M<tspan baseline-shift="sub" font-size="11">R</tspan>, scan every QC SNP</text>
+    <text class="body" x="615" y="461">in the region; add the strongest significant SNP,</text>
+    <text class="body" x="615" y="485">then repeat while conditioning on earlier SNPs.</text>
+  </g>
+  <path class="arrow" d="M799 502 L799 536"/>
+  <g filter="url(#shadow)">
+    <rect class="card" x="594" y="538" width="410" height="122" rx="13"/>
+    <text class="step" x="615" y="567">Full-model pruning</text>
+    <text class="body" x="615" y="595">Fit all forward-selected SNPs together with the</text>
+    <text class="body" x="615" y="621">same covariates; retain independent signals.</text>
+    <text class="formula" x="615" y="647">Union across M<tspan baseline-shift="sub" font-size="12">R</tspan> → candidate set V<tspan baseline-shift="sub" font-size="12">R</tspan></text>
+  </g>
+  <path class="arrow" d="M799 660 L799 694"/>
+  <g filter="url(#shadow)">
+    <rect class="card" x="594" y="696" width="410" height="145" rx="13"/>
+    <text class="step" x="615" y="725">Order the V<tspan baseline-shift="sub" font-size="12">R</tspan> × M<tspan baseline-shift="sub" font-size="12">R</tspan> matrix</text>
+    <text class="body" x="615" y="754">Choose the globally strongest remaining SNP–</text>
+    <text class="body" x="615" y="780">metabolite association; evaluate that SNP against</text>
+    <text class="body" x="615" y="806">all M<tspan baseline-shift="sub" font-size="11">R</tspan>, conditioned only on lower-order SNPs.</text>
+    <text class="small" x="615" y="830">Store β, SE, P, N, direction, and marker order.</text>
+  </g>
+
+  <rect x="1103" y="324" width="44" height="28" rx="14" fill="#e76f51"/><text class="badge" x="1121" y="343">3</text>
+  <text class="lane-title" x="1160" y="346">Define GIM components</text>
+  <g filter="url(#shadow)">
+    <rect class="card" x="1111" y="378" width="410" height="108" rx="13"/>
+    <text class="step" x="1132" y="407">Threshold conditional matrix edges</text>
+    <text class="body" x="1132" y="436">A significant cell connects one SNP node to one</text>
+    <text class="body" x="1132" y="462">metabolite node in a regional bipartite graph.</text>
+  </g>
+
+  <!-- Mini heatmap -->
+  <text class="small" x="1132" y="522">Ordered conditional heatmap</text>
+  <g transform="translate(1132,538)">
+    <text class="small" x="98" y="-7">M1</text><text class="small" x="145" y="-7">M2</text><text class="small" x="192" y="-7">M3</text><text class="small" x="239" y="-7">M4</text><text class="small" x="286" y="-7">M5</text>
+    <text class="small" x="0" y="27">SNP 1</text><text class="small" x="0" y="68">SNP 2</text><text class="small" x="0" y="109">SNP 3</text>
+    <g stroke="#fff" stroke-width="2">
+      <rect x="88" y="5" width="40" height="32" rx="4" fill="#c23b4a"/><rect x="135" y="5" width="40" height="32" rx="4" fill="#e7a1a9"/><rect x="182" y="5" width="40" height="32" rx="4" fill="#fff"/><rect x="229" y="5" width="40" height="32" rx="4" fill="#6f93c8"/><rect x="276" y="5" width="40" height="32" rx="4" fill="#fff"/>
+      <rect x="88" y="46" width="40" height="32" rx="4" fill="#df7a85"/><rect x="135" y="46" width="40" height="32" rx="4" fill="#fff"/><rect x="182" y="46" width="40" height="32" rx="4" fill="#fff"/><rect x="229" y="46" width="40" height="32" rx="4" fill="#315f9c"/><rect x="276" y="46" width="40" height="32" rx="4" fill="#fff"/>
+      <rect x="88" y="87" width="40" height="32" rx="4" fill="#fff"/><rect x="135" y="87" width="40" height="32" rx="4" fill="#fff"/><rect x="182" y="87" width="40" height="32" rx="4" fill="#d65d69"/><rect x="229" y="87" width="40" height="32" rx="4" fill="#fff"/><rect x="276" y="87" width="40" height="32" rx="4" fill="#7899c9"/>
+    </g>
+    <text class="small" x="330" y="29">β &gt; 0</text><rect x="378" y="12" width="25" height="20" rx="3" fill="#c23b4a"/>
+    <text class="small" x="330" y="66">β &lt; 0</text><rect x="378" y="49" width="25" height="20" rx="3" fill="#315f9c"/>
+  </g>
+
+  <path class="arrow" d="M1316 675 L1316 709"/>
+  <g filter="url(#shadow)">
+    <rect class="card" x="1111" y="711" width="410" height="130" rx="13"/>
+    <text class="step" x="1132" y="740">Connected component = one GIM</text>
+    <circle cx="1160" cy="783" r="12" fill="#247ba0"/><circle cx="1160" cy="819" r="12" fill="#247ba0"/>
+    <circle cx="1295" cy="769" r="12" fill="#e76f51"/><circle cx="1295" cy="805" r="12" fill="#e76f51"/>
+    <path d="M1172 783 L1283 769 M1172 783 L1283 805 M1172 819 L1283 805" stroke="#66788a" stroke-width="2"/>
+    <text class="small" x="1322" y="775">co-regulated</text>
+    <text class="small" x="1322" y="797">SNP–metabolite</text>
+    <text class="small" x="1322" y="819">module</text>
+  </g>
+
+  <!-- Across-lane connectors -->
+  <path class="arrow" d="M487 765 C530 765 544 765 594 765"/>
+  <path class="arrow" d="M1004 765 C1047 765 1064 765 1111 765"/>
+
+  <!-- Footer -->
+  <rect x="45" y="936" width="1509" height="70" rx="16" fill="#102a43"/>
+  <text class="subtitle" x="72" y="968">Final outputs</text>
+  <text class="body" x="220" y="968" fill="#fff">regions · independent signals · ordered conditional matrix · GIM edges/members · reproducibility manifest · interactive HTML heatmaps</text>
+  <text class="small" x="72" y="992" fill="#b8d7e2">mGWAS is upstream input only; GIMForge does not run GWAS.</text>
+</svg>
