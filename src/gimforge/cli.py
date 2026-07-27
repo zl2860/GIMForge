@@ -49,8 +49,10 @@ def _parameter_arguments(parser: argparse.ArgumentParser) -> None:
     group.add_argument("--ld-window-kb", type=int, default=1_000_000, help="LD search window used to construct sentinel spans")
     group.add_argument("--no-ld-half-width-kb", type=int, default=500, help="sentinel half-width when no LD neighbour exists")
     group.add_argument("--region-padding-kb", type=int, default=250, help="padding added after merging LD spans")
-    group.add_argument("--mac-min", type=int, default=10)
-    group.add_argument("--geno-missing-max", type=float, default=None)
+    group.add_argument("--mac-min", type=int, default=10, help="minimum minor allele count")
+    group.add_argument("--maf-min", type=float, default=None, help="optional minimum minor allele frequency")
+    group.add_argument("--hwe-p-min", type=float, default=None, help="optional minimum Hardy-Weinberg equilibrium P value")
+    group.add_argument("--geno-missing-max", type=float, default=None, help="optional maximum per-variant missing genotype rate")
     group.add_argument("--threads", type=int, default=1)
     group.add_argument("--metabolite-batch-size", type=int, default=1, help="PLINK phenotypes per temporary result batch; larger values trade disk for speed")
     group.add_argument(
@@ -85,7 +87,11 @@ def _parameters(args: argparse.Namespace):
         "ld_window_kb": args.ld_window_kb,
         "no_ld_half_width_kb": args.no_ld_half_width_kb,
         "region_padding_kb": args.region_padding_kb,
-        "mac_min": args.mac_min, "geno_missing_max": args.geno_missing_max, "threads": args.threads,
+        "mac_min": args.mac_min,
+        "maf_min": args.maf_min,
+        "hwe_p_min": args.hwe_p_min,
+        "geno_missing_max": args.geno_missing_max,
+        "threads": args.threads,
         "metabolite_batch_size": args.metabolite_batch_size,
         "force_single_forward_lead": args.force_single_forward_lead,
         "genetic_model": args.genetic_model,
@@ -146,8 +152,10 @@ def build_parser() -> argparse.ArgumentParser:
     clump_parser.add_argument("--sentinel-p", type=float, default=1.25e-11)
     clump_parser.add_argument("--sentinel-clump-r2", type=float, default=0.1)
     clump_parser.add_argument("--sentinel-clump-window-kb", type=int, default=1_000_000)
-    clump_parser.add_argument("--mac-min", type=int, default=10)
-    clump_parser.add_argument("--geno-missing-max", type=float, default=None)
+    clump_parser.add_argument("--mac-min", type=int, default=10, help="minimum minor allele count")
+    clump_parser.add_argument("--maf-min", type=float, default=None, help="optional minimum minor allele frequency")
+    clump_parser.add_argument("--hwe-p-min", type=float, default=None, help="optional minimum Hardy-Weinberg equilibrium P value")
+    clump_parser.add_argument("--geno-missing-max", type=float, default=None, help="optional maximum per-variant missing genotype rate")
     clump_parser.add_argument("--threads", type=int, default=1)
     clump_parser.add_argument("--verbose", action="store_true")
     _sumstats_column_arguments(clump_parser)
@@ -157,8 +165,22 @@ def build_parser() -> argparse.ArgumentParser:
     run_sumstats.add_argument("--sumstats-manifest", help="TSV with trait_id and path, one summary-statistic file per trait")
     run_sumstats.add_argument("--sentinels", help="precomputed trait-specific clump leaders from gimforge clump")
     run_parser.add_argument("--bfile", required=True, help="PLINK 1 binary prefix")
-    run_parser.add_argument("--ld-bfile", required=True, help="PLINK 1 binary population-matched LD reference-panel prefix")
-    run_parser.add_argument("--ancestry", required=True, choices=_ANCESTRIES, help="ancestry represented by --ld-bfile")
+    run_ld_source = run_parser.add_mutually_exclusive_group(required=True)
+    run_ld_source.add_argument(
+        "--ld-bfile",
+        help="PLINK 1 binary population-matched LD reference-panel prefix",
+    )
+    run_ld_source.add_argument(
+        "--use-analysis-genotype-for-ld",
+        action="store_true",
+        help="explicitly reuse --bfile to calculate LD instead of supplying a separate reference panel",
+    )
+    run_parser.add_argument(
+        "--ancestry",
+        required=True,
+        choices=_ANCESTRIES,
+        help="ancestry represented by the external or reused LD genotype",
+    )
     run_parser.add_argument("--ld-panel-name", help="human-readable panel label recorded in the manifest/report, e.g. '1000 Genomes Phase 3 EUR'")
     run_parser.add_argument("--phenotypes", required=True, help="uncompressed headered TSV: FID IID plus numeric trait columns")
     run_parser.add_argument("--covariates", required=True, help="uncompressed headered TSV: FID IID plus numeric covariates")
@@ -219,6 +241,8 @@ def main(argv: list[str] | None = None) -> int:
                     "sentinel_clump_r2": args.sentinel_clump_r2,
                     "sentinel_clump_window_kb": args.sentinel_clump_window_kb,
                     "mac_min": args.mac_min,
+                    "maf_min": args.maf_min,
+                    "hwe_p_min": args.hwe_p_min,
                     "geno_missing_max": args.geno_missing_max,
                     "threads": args.threads,
                 }
@@ -273,10 +297,20 @@ def main(argv: list[str] | None = None) -> int:
             progress("Checking PLINK2 dependency")
             if args.regression_model == "mixed":
                 progress("Checking BOLT-LMM dependency")
+            ld_bfile = args.bfile if args.use_analysis_genotype_for_ld else args.ld_bfile
+            ld_panel_name = args.ld_panel_name
+            if args.use_analysis_genotype_for_ld and ld_panel_name is None:
+                ld_panel_name = (
+                    f"{Path(args.bfile).name} (analysis genotype reused for LD)"
+                )
+            if args.use_analysis_genotype_for_ld:
+                progress(
+                    "LD source: explicitly reusing the individual-level analysis genotype"
+                )
             run_gim(
                 sumstats=args.sumstats, sumstats_manifest=args.sumstats_manifest, sentinels=args.sentinels,
-                bfile=args.bfile, ld_bfile=args.ld_bfile,
-                ancestry=args.ancestry, ld_panel_name=args.ld_panel_name,
+                bfile=args.bfile, ld_bfile=ld_bfile,
+                ancestry=args.ancestry, ld_panel_name=ld_panel_name,
                 phenotypes=args.phenotypes, covariates=args.covariates,
                 output=args.out, plink2=resolve_plink2(args.plink2), parameters=parameters,
                 bolt=resolve_bolt(args.bolt) if args.regression_model == "mixed" else None,

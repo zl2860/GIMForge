@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Iterable, Mapping, Protocol, Sequence
 
 from .bolt import run as run_bolt
+from .frequency import classify_maf, maf_from_a1_frequency, normalise_allele_frequency
 from .io import as_float, iter_table, table_header, write_table
 from .parameters import GIMParameters
 from .plink import common_filters, read_fam_ids, run as run_plink, write_ids
@@ -99,9 +100,14 @@ def _read_glm(path: Path, genetic_model: str = "additive") -> list[dict[str, obj
             p_value = as_float(row.get("P"))
             if p_value is None or not 0 <= p_value <= 1:
                 continue
+            a1_freq = normalise_allele_frequency(row.get("A1_FREQ"))
+            maf = maf_from_a1_frequency(a1_freq)
             output.append(
                 {
                     "snp_id": row.get("ID", ""),
+                    "a1_freq": a1_freq if a1_freq is not None else "",
+                    "maf": maf if maf is not None else "",
+                    "maf_class": classify_maf(maf),
                     "p": p_value,
                     "beta": as_float(row.get("BETA")),
                     "se": as_float(row.get("SE")),
@@ -167,7 +173,13 @@ class _PLINKConditionalRunner:
                 "--chr", chromosome,
                 "--from-bp", str(start),
                 "--to-bp", str(end),
-                *common_filters(mac_min=self.parameters.mac_min, geno_missing_max=self.parameters.geno_missing_max, chromosome=None),
+                *common_filters(
+                    mac_min=self.parameters.mac_min,
+                    maf_min=self.parameters.maf_min,
+                    hwe_p_min=self.parameters.hwe_p_min,
+                    geno_missing_max=self.parameters.geno_missing_max,
+                    chromosome=None,
+                ),
             ]
             if candidates is not None:
                 variant_ids = sorted(set(candidates).union(conditioned_on))
@@ -184,7 +196,15 @@ class _PLINKConditionalRunner:
                 arguments.extend(["--condition-list", condition_file])
                 if self.parameters.genetic_model != "additive":
                     arguments.append(self.parameters.genetic_model)
-            glm_modifiers = ["hide-covar", "omit-ref", "skip-invalid-pheno"]
+            # Request A1_FREQ explicitly instead of relying on the PLINK2
+            # version's default column set. It is converted to MAF in
+            # _read_glm() and propagated to every downstream result table.
+            glm_modifiers = [
+                "hide-covar",
+                "omit-ref",
+                "skip-invalid-pheno",
+                "cols=+a1freq",
+            ]
             if self.parameters.genetic_model != "additive":
                 glm_modifiers.append(self.parameters.genetic_model)
             arguments.extend(["--glm", *glm_modifiers, "--threads", str(self.parameters.threads), "--out", prefix])
@@ -233,9 +253,16 @@ def _read_bolt_stats(path: Path) -> list[dict[str, object]]:
             p_value = as_float(row.get("P_BOLT_LMM_INF"))
             if p_value is None or not 0 <= p_value <= 1:
                 continue
+            a1_freq = normalise_allele_frequency(
+                row.get("A1FREQ", row.get("A1_FREQ"))
+            )
+            maf = maf_from_a1_frequency(a1_freq)
             output.append(
                 {
                     "snp_id": row.get("SNP", ""),
+                    "a1_freq": a1_freq if a1_freq is not None else "",
+                    "maf": maf if maf is not None else "",
+                    "maf_class": classify_maf(maf),
                     "p": p_value,
                     "beta": as_float(row.get("BETA")),
                     "se": as_float(row.get("SE")),
@@ -388,6 +415,8 @@ class _BOLTConditionalRunner:
             str(end),
             *common_filters(
                 mac_min=self.parameters.mac_min,
+                maf_min=self.parameters.maf_min,
+                hwe_p_min=self.parameters.hwe_p_min,
                 geno_missing_max=self.parameters.geno_missing_max,
                 chromosome=None,
             ),
@@ -503,6 +532,8 @@ def _forward_select(
             {
                 "region_id": region["region_id"], "metabolite": metabolite,
                 "forward_order": len(selected), "snp_id": best["snp_id"],
+                "a1_freq": best.get("a1_freq", ""), "maf": best.get("maf", ""),
+                "maf_class": best.get("maf_class", "unknown"),
                 "beta": best["beta"], "se": best["se"], "p": best["p"], "n": best["n"],
             }
         )
@@ -530,9 +561,14 @@ def _full_model_prune(
                 "selection_source": "forward_then_full_model", **match,
             })
     if not retained and len(selected) == 1 and runner.parameters.force_single_forward_lead:
+        source = forward[0]
         retained.append({
             "region_id": region["region_id"], "metabolite": metabolite, "snp_id": selected[0],
-            "selection_source": "forced_single_forward_lead", "beta": "", "se": "", "p": "", "n": "",
+            "selection_source": "forced_single_forward_lead",
+            "a1_freq": source.get("a1_freq", ""),
+            "maf": source.get("maf", ""),
+            "maf_class": source.get("maf_class", "unknown"),
+            "beta": "", "se": "", "p": "", "n": "",
         })
     return retained
 
@@ -570,6 +606,8 @@ def _build_matrix(
                 "region_id": region["region_id"], "marker_order": order, "snp_id": snp_id,
                 "trigger_metabolite": best["metabolite"], "trigger_beta": best["beta"],
                 "trigger_se": best["se"], "trigger_p": best["p"], "conditioned_on_n": len(selected),
+                "a1_freq": best.get("a1_freq", ""), "maf": best.get("maf", ""),
+                "maf_class": best.get("maf_class", "unknown"),
             }
         )
         for metabolite in metabolites:
@@ -579,6 +617,9 @@ def _build_matrix(
                     "region_id": region["region_id"], "marker_order": order, "snp_id": snp_id,
                     "metabolite": metabolite, "beta": match["beta"] if match else "", "se": match["se"] if match else "",
                     "p": match["p"] if match else "", "n": match["n"] if match else "",
+                    "a1_freq": match.get("a1_freq", "") if match else "",
+                    "maf": match.get("maf", "") if match else "",
+                    "maf_class": match.get("maf_class", "unknown") if match else "unknown",
                     "conditioned_on_n": len(selected), "testable": bool(match),
                 }
             )

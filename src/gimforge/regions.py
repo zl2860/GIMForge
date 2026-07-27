@@ -212,7 +212,12 @@ def _select_sentinels(
         _write_assoc(assoc_path, rows)
         arguments = [
             "--bfile", bfile,
-            *common_filters(mac_min=parameters.mac_min, geno_missing_max=parameters.geno_missing_max),
+            *common_filters(
+                mac_min=parameters.mac_min,
+                maf_min=parameters.maf_min,
+                hwe_p_min=parameters.hwe_p_min,
+                geno_missing_max=parameters.geno_missing_max,
+            ),
             "--clump", assoc_path,
             "--clump-p1", str(parameters.sentinel_p),
             "--clump-p2", str(parameters.sentinel_p),
@@ -291,7 +296,12 @@ def _ld_summaries(
         list_path.write_text("\n".join(identifiers) + "\n")
         arguments = [
             "--bfile", bfile,
-            *common_filters(mac_min=parameters.mac_min, geno_missing_max=parameters.geno_missing_max),
+            *common_filters(
+                mac_min=parameters.mac_min,
+                maf_min=parameters.maf_min,
+                hwe_p_min=parameters.hwe_p_min,
+                geno_missing_max=parameters.geno_missing_max,
+            ),
             "--ld-snp-list", list_path,
             "--r2-unphased",
             "--ld-window", "999999999",

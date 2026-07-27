@@ -57,6 +57,32 @@ class ParameterTests(unittest.TestCase):
                 }
             )
 
+    def test_genotype_qc_thresholds_are_configurable(self):
+        parameters = parameters_from_args(
+            {
+                "mac_min": 11,
+                "maf_min": 0.0001,
+                "hwe_p_min": 1e-6,
+                "geno_missing_max": 0.05,
+            }
+        )
+        self.assertEqual(parameters.mac_min, 11)
+        self.assertEqual(parameters.maf_min, 0.0001)
+        self.assertEqual(parameters.hwe_p_min, 1e-6)
+        self.assertEqual(parameters.geno_missing_max, 0.05)
+
+    def test_genotype_qc_thresholds_are_validated(self):
+        for overrides in (
+            {"maf_min": 0},
+            {"maf_min": 0.6},
+            {"hwe_p_min": 0},
+            {"hwe_p_min": 1.1},
+            {"geno_missing_max": 1},
+        ):
+            with self.subTest(overrides=overrides):
+                with self.assertRaises(ValueError):
+                    parameters_from_args(overrides)
+
 
 if __name__ == "__main__":
     unittest.main()

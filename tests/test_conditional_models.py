@@ -22,12 +22,14 @@ class ConditionalModelTests(unittest.TestCase):
                 ("recessive", "REC"),
             ):
                 report.write_text(
-                    "#CHROM POS ID REF ALT A1 TEST OBS_CT BETA SE P ERRCODE\n"
-                    f"1 100 rs1 A G G {test_label} 100 0.4 0.1 1e-9 .\n"
+                    "#CHROM POS ID REF ALT A1 A1_FREQ TEST OBS_CT BETA SE P ERRCODE\n"
+                    f"1 100 rs1 A G G 0.992 {test_label} 100 0.4 0.1 1e-9 .\n"
                 )
                 rows = _read_glm(report, genetic_model)
                 self.assertEqual(rows[0]["snp_id"], "rs1")
                 self.assertEqual(rows[0]["p"], 1e-9)
+                self.assertAlmostEqual(rows[0]["maf"], 0.008)
+                self.assertEqual(rows[0]["maf_class"], "rare")
 
     def test_dominant_coding_is_applied_to_test_and_condition_variants(self):
         with tempfile.TemporaryDirectory(prefix="gimforge_model_test_") as directory:
@@ -57,18 +59,21 @@ class ConditionalModelTests(unittest.TestCase):
             self.assertEqual(arguments[condition_index + 2], "dominant")
             glm_index = arguments.index("--glm")
             self.assertIn("dominant", arguments[glm_index + 1 :])
+            self.assertIn("cols=+a1freq", arguments[glm_index + 1 :])
 
     def test_bolt_infinitesimal_output_is_normalised(self):
         with tempfile.TemporaryDirectory(prefix="gimforge_model_test_") as directory:
             report = Path(directory) / "bolt.stats"
             report.write_text(
-                "SNP CHR BP ALLELE1 ALLELE0 BETA SE P_BOLT_LMM_INF\n"
-                "rs1 1 100 G A 0.25 0.05 2e-10\n"
+                "SNP CHR BP ALLELE1 ALLELE0 A1FREQ BETA SE P_BOLT_LMM_INF\n"
+                "rs1 1 100 G A 0.97 0.25 0.05 2e-10\n"
             )
             rows = _read_bolt_stats(report)
         self.assertEqual(rows[0]["snp_id"], "rs1")
         self.assertEqual(rows[0]["p"], 2e-10)
         self.assertEqual(rows[0]["beta"], 0.25)
+        self.assertAlmostEqual(rows[0]["maf"], 0.03)
+        self.assertEqual(rows[0]["maf_class"], "low_frequency")
 
     def test_bolt_runner_requests_infinitesimal_additive_statistic(self):
         with tempfile.TemporaryDirectory(prefix="gimforge_model_test_") as directory:

@@ -55,10 +55,21 @@ def run(plink2: str | Path, args: Sequence[str | Path], *, context: str, quiet: 
     return completed
 
 
-def common_filters(*, mac_min: int, geno_missing_max: float | None, chromosome: str | None = "1-22") -> list[str]:
+def common_filters(
+    *,
+    mac_min: int,
+    maf_min: float | None,
+    hwe_p_min: float | None,
+    geno_missing_max: float | None,
+    chromosome: str | None = "1-22",
+) -> list[str]:
     arguments = ["--snps-only", "just-acgt", "--max-alleles", "2", "--mac", str(mac_min)]
     if chromosome is not None:
         arguments = ["--chr", chromosome, *arguments]
+    if maf_min is not None:
+        arguments.extend(["--maf", str(maf_min)])
+    if hwe_p_min is not None:
+        arguments.extend(["--hwe", str(hwe_p_min)])
     if geno_missing_max is not None:
         arguments.extend(["--geno", str(geno_missing_max)])
     return arguments

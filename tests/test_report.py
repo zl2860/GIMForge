@@ -19,6 +19,8 @@ class ReportTests(unittest.TestCase):
                 "n": 100,
                 "conditioned_on_n": 0,
                 "testable": "TRUE",
+                "maf": 0.008,
+                "maf_class": "rare",
             }
             for snp, metabolite, beta, p in (
                 ("rs1", "M1", 0.4, 1e-9),
@@ -28,8 +30,8 @@ class ReportTests(unittest.TestCase):
             )
         ]
         members = [
-            {"gim_id": "region_1_GIM_001", "region_id": "region_1", "node_type": "SNP", "node_id": "rs1", "marker_order": 1},
-            {"gim_id": "region_1_GIM_001", "region_id": "region_1", "node_type": "SNP", "node_id": "rs2", "marker_order": 2},
+            {"gim_id": "region_1_GIM_001", "region_id": "region_1", "node_type": "SNP", "node_id": "rs1", "marker_order": 1, "maf": 0.008, "maf_class": "rare"},
+            {"gim_id": "region_1_GIM_001", "region_id": "region_1", "node_type": "SNP", "node_id": "rs2", "marker_order": 2, "maf": 0.008, "maf_class": "rare"},
             {"gim_id": "region_1_GIM_001", "region_id": "region_1", "node_type": "metabolite", "node_id": "M1", "marker_order": ""},
             {"gim_id": "region_1_GIM_001", "region_id": "region_1", "node_type": "metabolite", "node_id": "M2", "marker_order": ""},
         ]
@@ -57,6 +59,8 @@ class ReportTests(unittest.TestCase):
         self.assertIn("Genetically influenced metabotypes", report)
         self.assertIn("Colour encodes conditional β", report)
         self.assertIn("LD reference ancestry</th><td>EAS", report)
+        self.assertIn("MAF CLASS", report)
+        self.assertIn("rare", report)
         self.assertNotIn("<h2>All GIMs</h2>", report)
 
     def test_report_restores_retained_p_from_edges_for_legacy_matrix(self):

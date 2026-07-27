@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from statistics import median
 from typing import Iterable, Mapping
 
+from .frequency import classify_maf, maf_from_a1_frequency, normalise_allele_frequency, normalise_maf
 from .io import as_float, as_int
 
 
@@ -59,8 +61,14 @@ def components_from_matrix(
     beta_column = next((name for name in ("beta", "BETA", "effect") if name in rows[0]), None)
     se_column = next((name for name in ("se", "SE", "standard_error") if name in rows[0]), None)
     n_column = next((name for name in ("n", "N", "OBS_CT") if name in rows[0]), None)
+    a1_freq_column = next(
+        (name for name in ("a1_freq", "A1_FREQ", "A1FREQ") if name in rows[0]),
+        None,
+    )
+    maf_column = next((name for name in ("maf", "MAF") if name in rows[0]), None)
 
     by_region: dict[str, list[dict[str, object]]] = defaultdict(list)
+    variant_mafs: dict[tuple[str, str], list[float]] = defaultdict(list)
     normalised_rows: list[dict[str, object]] = []
     for source_row in rows:
         row = dict(source_row)
@@ -76,6 +84,19 @@ def components_from_matrix(
             row["se"] = row.get(se_column, "")
         if n_column is not None:
             row["n"] = row.get(n_column, "")
+        a1_freq = (
+            normalise_allele_frequency(row.get(a1_freq_column))
+            if a1_freq_column is not None
+            else None
+        )
+        maf = normalise_maf(row.get(maf_column)) if maf_column is not None else None
+        if maf is None:
+            maf = maf_from_a1_frequency(a1_freq)
+        row["a1_freq"] = a1_freq if a1_freq is not None else ""
+        row["maf"] = maf if maf is not None else ""
+        row["maf_class"] = classify_maf(maf)
+        if maf is not None:
+            variant_mafs[(row["region_id"], row["snp_id"])].append(maf)
         normalised_rows.append(row)
         if p_value is None or p_value < 0 or p_value > conditional_p:
             continue
@@ -109,8 +130,21 @@ def components_from_matrix(
             gim_id = f"{region_id}_GIM_{index:03d}"
             snps = sorted(node[2:] for node in nodes if node.startswith("S:"))
             metabolites = sorted(node[2:] for node in nodes if node.startswith("M:"))
+            snp_maf = {
+                snp: (
+                    median(variant_mafs[(region_id, snp)])
+                    if variant_mafs.get((region_id, snp))
+                    else None
+                )
+                for snp in snps
+            }
+            snp_maf_class = {
+                snp: classify_maf(snp_maf[snp])
+                for snp in snps
+            }
             for node in nodes:
                 node_to_gim[node] = gim_id
+                snp_id = node[2:] if node.startswith("S:") else None
                 members.append(
                     {
                         "gim_id": gim_id,
@@ -118,15 +152,40 @@ def components_from_matrix(
                         "node_type": "SNP" if node.startswith("S:") else "metabolite",
                         "node_id": node[2:],
                         "marker_order": marker_order.get(node, ""),
+                        "maf": (
+                            snp_maf[snp_id]
+                            if snp_id is not None and snp_maf[snp_id] is not None
+                            else ""
+                        ),
+                        "maf_class": (
+                            snp_maf_class[snp_id] if snp_id is not None else ""
+                        ),
                     }
                 )
+            class_counts = {
+                name: sum(value == name for value in snp_maf_class.values())
+                for name in ("rare", "low_frequency", "common", "unknown")
+            }
             summary.append(
                 {
                     "gim_id": gim_id,
                     "region_id": region_id,
                     "n_snps": len(snps),
+                    "n_rare_snps": class_counts["rare"],
+                    "n_low_frequency_snps": class_counts["low_frequency"],
+                    "n_common_snps": class_counts["common"],
+                    "n_unknown_maf_snps": class_counts["unknown"],
                     "n_metabolites": len(metabolites),
                     "snps": ";".join(snps),
+                    "snp_mafs": ";".join(
+                        f"{snp}={snp_maf[snp]:.8g}"
+                        if snp_maf[snp] is not None
+                        else f"{snp}=NA"
+                        for snp in snps
+                    ),
+                    "snp_maf_classes": ";".join(
+                        f"{snp}={snp_maf_class[snp]}" for snp in snps
+                    ),
                     "metabolites": ";".join(metabolites),
                 }
             )

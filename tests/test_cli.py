@@ -1,3 +1,5 @@
+import contextlib
+import io
 import unittest
 
 from gimforge.cli import build_parser
@@ -96,10 +98,68 @@ class CliTests(unittest.TestCase):
                 "dominant",
                 "--regression-model",
                 "linear",
+                "--mac-min",
+                "11",
+                "--maf-min",
+                "0.0001",
+                "--hwe-p-min",
+                "1e-6",
+                "--geno-missing-max",
+                "0.05",
             ]
         )
         self.assertEqual(args.genetic_model, "dominant")
         self.assertEqual(args.regression_model, "linear")
+        self.assertEqual(args.mac_min, 11)
+        self.assertEqual(args.maf_min, 0.0001)
+        self.assertEqual(args.hwe_p_min, 1e-6)
+        self.assertEqual(args.geno_missing_max, 0.05)
+
+    def test_run_can_explicitly_reuse_analysis_genotype_for_ld(self):
+        args = build_parser().parse_args(
+            [
+                "run",
+                "--sentinels",
+                "clumping/sentinels.tsv",
+                "--bfile",
+                "data/cohort",
+                "--use-analysis-genotype-for-ld",
+                "--ancestry",
+                "EAS",
+                "--phenotypes",
+                "data/phenotypes.tsv",
+                "--covariates",
+                "data/covariates.tsv",
+                "--out",
+                "result",
+            ]
+        )
+        self.assertTrue(args.use_analysis_genotype_for_ld)
+        self.assertIsNone(args.ld_bfile)
+
+    def test_run_rejects_two_ld_sources(self):
+        with contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit):
+                build_parser().parse_args(
+                    [
+                        "run",
+                        "--sentinels",
+                        "clumping/sentinels.tsv",
+                        "--bfile",
+                        "data/cohort",
+                        "--ld-bfile",
+                        "reference/EAS",
+                        "--use-analysis-genotype-for-ld",
+                        "--ancestry",
+                        "EAS",
+                        "--phenotypes",
+                        "data/phenotypes.tsv",
+                        "--covariates",
+                        "data/covariates.tsv",
+                        "--out",
+                        "result",
+                    ]
+                )
 
     def test_mixed_run_accepts_bolt_inputs(self):
         args = build_parser().parse_args(

@@ -21,14 +21,14 @@ _FIELDS = {
     "sentinels": ["metabolite", "chromosome", "position", "snp_id", "p"],
     "regions": ["region_id", "chromosome", "start", "end", "start_before_margin", "end_before_margin", "n_initial_regions"],
     "region_metabolites": ["region_id", "metabolite", "sentinel_id", "sentinel_position", "sentinel_p", "initial_region_id", "initial_definition"],
-    "forward_trace": ["region_id", "metabolite", "forward_order", "snp_id", "beta", "se", "p", "n"],
-    "independent_signals": ["region_id", "metabolite", "snp_id", "selection_source", "beta", "se", "p", "n"],
-    "matrix_markers": ["region_id", "marker_order", "snp_id", "trigger_metabolite", "trigger_beta", "trigger_se", "trigger_p", "conditioned_on_n"],
-    "matrix_out": ["region_id", "marker_order", "snp_id", "metabolite", "beta", "se", "p", "n", "conditioned_on_n", "testable"],
+    "forward_trace": ["region_id", "metabolite", "forward_order", "snp_id", "a1_freq", "maf", "maf_class", "beta", "se", "p", "n"],
+    "independent_signals": ["region_id", "metabolite", "snp_id", "selection_source", "a1_freq", "maf", "maf_class", "beta", "se", "p", "n"],
+    "matrix_markers": ["region_id", "marker_order", "snp_id", "a1_freq", "maf", "maf_class", "trigger_metabolite", "trigger_beta", "trigger_se", "trigger_p", "conditioned_on_n"],
+    "matrix_out": ["region_id", "marker_order", "snp_id", "metabolite", "a1_freq", "maf", "maf_class", "beta", "se", "p", "n", "conditioned_on_n", "testable"],
     "region_summary": ["region_id", "chromosome", "start", "end", "n_metabolites", "n_forward_signals", "n_independent_signals", "n_matrix_markers"],
-    "edges": ["region_id", "marker_order", "snp_id", "metabolite", "beta", "se", "p", "n", "conditioned_on_n", "testable", "gim_id"],
-    "members": ["gim_id", "region_id", "node_type", "node_id", "marker_order"],
-    "gim_summary": ["gim_id", "region_id", "n_snps", "n_metabolites", "snps", "metabolites"],
+    "edges": ["region_id", "marker_order", "snp_id", "metabolite", "a1_freq", "maf", "maf_class", "beta", "se", "p", "n", "conditioned_on_n", "testable", "gim_id"],
+    "members": ["gim_id", "region_id", "node_type", "node_id", "marker_order", "maf", "maf_class"],
+    "gim_summary": ["gim_id", "region_id", "n_snps", "n_rare_snps", "n_low_frequency_snps", "n_common_snps", "n_unknown_maf_snps", "n_metabolites", "snps", "snp_mafs", "snp_maf_classes", "metabolites"],
 }
 
 
@@ -84,7 +84,12 @@ def run_gim(
             raise FileNotFoundError(
                 f"BOLT-LMM genetic map does not exist: {resolved_bolt_genetic_map}"
             )
-    panel_label = ld_panel_name or ld_bfile.name
+    analysis_genotype_reused_for_ld = bfile.resolve() == ld_bfile.resolve()
+    panel_label = ld_panel_name or (
+        f"{bfile.name} (analysis genotype reused for LD)"
+        if analysis_genotype_reused_for_ld
+        else ld_bfile.name
+    )
     if output.exists() and any(path.name != "run.log" for path in output.iterdir()):
         raise FileExistsError(f"Output directory is not empty: {output}. Choose a new output directory.")
     output.mkdir(parents=True, exist_ok=True)
@@ -138,7 +143,19 @@ def run_gim(
             "and a genome-wide LOCO polygenic random effect; forward selection, "
             "full-model pruning, and ordered V_R x M_R matrix."
         ),
-        "genotype_backend": "PLINK 1 binary hard-call input. This backend cannot apply imputation INFO filtering; MAC filtering is applied.",
+        "genotype_backend": (
+            "PLINK 1 binary hard-call input. This backend cannot apply imputation "
+            "INFO filtering; configured MAF, MAC, HWE, and missingness filters are applied."
+        ),
+        "maf_classification": {
+            "source": "conditional-analysis study genotype after sample and genotype filters",
+            "rare": "MAF <= 0.01",
+            "low_frequency": "0.01 < MAF <= 0.05",
+            "common": "MAF > 0.05",
+            "missing": "unknown",
+            "gim_snp_aggregation": "median of available matrix-row MAF values within the region",
+            "wes_validation": "not performed",
+        },
         "parameters": parameters.to_dict(),
         "inputs": {
             "sumstats": str(Path(sumstats).resolve()) if sumstats is not None else None,
@@ -148,6 +165,11 @@ def run_gim(
             "ld_reference_bfile": str(ld_bfile.resolve()),
             "ld_reference_panel_name": panel_label,
             "ld_reference_ancestry": ancestry,
+            "ld_reference_source": (
+                "analysis_genotype"
+                if analysis_genotype_reused_for_ld
+                else "external_reference_panel"
+            ),
             "phenotypes": str(Path(phenotypes).resolve()),
             "covariates": str(Path(covariates).resolve()),
             "bolt_model_bfile": (
@@ -161,7 +183,11 @@ def run_gim(
                 else None
             ),
         },
-        "ld_reference": "explicitly_supplied_reference_panel",
+        "ld_reference": (
+            "analysis_genotype_explicitly_reused_for_ld"
+            if analysis_genotype_reused_for_ld
+            else "explicitly_supplied_reference_panel"
+        ),
         "region_seed_input": (
             "precomputed_trait_specific_sentinels"
             if sentinels is not None
@@ -189,6 +215,11 @@ def run_gim(
             "LD reference panel": panel_label,
             "LD reference ancestry": ancestry,
             "LD reference prefix": str(ld_bfile.resolve()),
+            "LD source": (
+                "analysis genotype explicitly reused"
+                if analysis_genotype_reused_for_ld
+                else "external reference panel"
+            ),
             "Individual-level genotype": str(bfile.resolve()),
             "PLINK2": version(plink2),
             "Genetic model": parameters.genetic_model,
@@ -215,6 +246,10 @@ def run_gim(
             "Cross-metabolite merge r²": parameters.cross_metabolite_merge_r2,
             "No-LD half-window / padding": f"{parameters.no_ld_half_width_kb:,} / {parameters.region_padding_kb:,} kb",
             "Conditional P threshold": parameters.conditional_p,
+            "MAF classification": (
+                "rare ≤1%; low-frequency >1% to ≤5%; common >5%; "
+                "study-genotype frequency; no WES validation"
+            ),
         },
     )
     progress(

@@ -10,11 +10,11 @@ from typing import Any, Mapping
 class GIMParameters:
     """Parameters used by the GIM workflow.
 
-    The defaults reproduce the reference locus and conditional-analysis rules.
-    Some genotype-QC details necessarily depend on the supplied genotype
-    representation. The PLINK1 BED backend uses MAC filtering and reports that
-    distinction in the run manifest; it cannot recover imputation INFO from a
-    hard-call BED file.
+    Reference locus and conditional-analysis thresholds are exposed as
+    auditable defaults. Genotype QC necessarily depends on the supplied
+    representation. The PLINK1 BED backend can apply MAF, MAC, HWE, and
+    missingness filters, but it cannot recover imputation INFO from a hard-call
+    BED file.
     """
 
     sentinel_p: float = 1.25e-11
@@ -27,6 +27,8 @@ class GIMParameters:
     no_ld_half_width_kb: int = 500
     region_padding_kb: int = 250
     mac_min: int = 10
+    maf_min: float | None = None
+    hwe_p_min: float | None = None
     geno_missing_max: float | None = None
     threads: int = 1
     metabolite_batch_size: int = 1
@@ -61,6 +63,10 @@ class GIMParameters:
                 raise ValueError(f"{name} must be positive.")
         if self.geno_missing_max is not None and not 0 <= self.geno_missing_max < 1:
             raise ValueError("geno_missing_max must be in [0, 1), or None.")
+        if self.maf_min is not None and not 0 < self.maf_min <= 0.5:
+            raise ValueError("maf_min must be in (0, 0.5], or None.")
+        if self.hwe_p_min is not None and not 0 < self.hwe_p_min <= 1:
+            raise ValueError("hwe_p_min must be in (0, 1], or None.")
         if self.genetic_model not in {"additive", "dominant", "recessive"}:
             raise ValueError("genetic_model must be additive, dominant, or recessive.")
         if self.regression_model not in {"linear", "mixed"}:

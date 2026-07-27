@@ -68,10 +68,20 @@ def write_report(
             str(row.get("metabolite")),
         )
         retained = edge_lookup.get(key)
-        if as_float(row.get("p")) is None and retained is not None:
-            if as_float(retained.get("p")) is not None:
+        if retained is not None:
+            if as_float(row.get("p")) is None and as_float(retained.get("p")) is not None:
                 restored_retained_p += 1
-            for field in ("beta", "se", "p", "n", "conditioned_on_n", "testable"):
+            for field in (
+                "a1_freq",
+                "maf",
+                "maf_class",
+                "beta",
+                "se",
+                "p",
+                "n",
+                "conditioned_on_n",
+                "testable",
+            ):
                 if row.get(field) in (None, "") and retained.get(field) not in (None, ""):
                     row[field] = retained[field]
         report_matrix.append(row)
@@ -180,7 +190,7 @@ let zoom=1;
 let selectedCell=null;
 const regionById=new Map(regions.map(x=>[String(x.region_id),x]));
 const memberByGim=new Map();
-for(const row of members){const id=String(row.gim_id);if(!memberByGim.has(id))memberByGim.set(id,{SNP:[],metabolite:[],orders:{}});const group=memberByGim.get(id);const type=String(row.node_type);if(!group[type])group[type]=[];if(!group[type].includes(String(row.node_id)))group[type].push(String(row.node_id));if(type==='SNP')group.orders[String(row.node_id)]=numeric(row.marker_order);}
+for(const row of members){const id=String(row.gim_id);if(!memberByGim.has(id))memberByGim.set(id,{SNP:[],metabolite:[],orders:{},maf:{},mafClass:{}});const group=memberByGim.get(id);const type=String(row.node_type);if(!group[type])group[type]=[];if(!group[type].includes(String(row.node_id)))group[type].push(String(row.node_id));if(type==='SNP'){group.orders[String(row.node_id)]=numeric(row.marker_order);group.maf[String(row.node_id)]=numeric(row.maf);group.mafClass[String(row.node_id)]=String(row.maf_class||'unknown')}}
 const rowsByRegion=new Map();
 for(const row of matrix){const id=String(row.region_id);if(!rowsByRegion.has(id))rowsByRegion.set(id,[]);rowsByRegion.get(id).push(row);}
 function numeric(value){if(value===null||value===undefined||String(value).trim()==='')return null;const n=Number(value);return Number.isFinite(n)?n:null}
@@ -203,7 +213,7 @@ function heatColor(beta,maxAbs){const b=numeric(beta);if(b===null)return'#f4f6f6
 function openDetail(row,item){
   selectedCell=row;
   const retained=isRetained(row),beta=numeric(row.beta),pScore=score(row.p);
-  document.querySelector('#detail').innerHTML=`<header class="detail-head"><div><p class="eyebrow">GIM ASSOCIATION</p><h2>${esc(item.gim_id)}</h2></div><span class="status ${retained?'retained':''}">${retained?'Retained association':'Conditional test'}</span></header><div class="detail-body"><div class="selected-pair"><span>${esc(row.snp_id)}</span><b>×</b><span>${esc(row.metabolite)}</span></div><div class="effect-grid"><div><span>CONDITIONAL β</span><b class="${beta!==null&&beta>=0?'positive':'negative'}">${effectFormat(row.beta)}</b></div><div><span>P VALUE</span><b>${pFormat(row.p,row.testable)}</b></div><div><span>−LOG10 P</span><b>${pScore===null?'—':pScore.toFixed(2)}</b></div><div><span>CONDITIONED ON</span><b>${esc(row.conditioned_on_n??'—')}</b></div></div><section class="annotation"><h3>Conditional test details</h3><dl><div><dt>Region</dt><dd>${esc(regionLabel(item.region_id))}</dd></div><div><dt>Marker order</dt><dd>${esc(row.marker_order??'—')}</dd></div><div><dt>Standard error</dt><dd>${effectFormat(row.se)}</dd></div><div><dt>Sample size</dt><dd>${esc(row.n??'—')}</dd></div><div><dt>Testable</dt><dd>${esc(row.testable??'—')}</dd></div><div><dt>GIM edge threshold</dt><dd>P ≤ ${conditionalP.toExponential(3)}</dd></div></dl></section></div>`;
+  document.querySelector('#detail').innerHTML=`<header class="detail-head"><div><p class="eyebrow">GIM ASSOCIATION</p><h2>${esc(item.gim_id)}</h2></div><span class="status ${retained?'retained':''}">${retained?'Retained association':'Conditional test'}</span></header><div class="detail-body"><div class="selected-pair"><span>${esc(row.snp_id)}</span><b>×</b><span>${esc(row.metabolite)}</span></div><div class="effect-grid"><div><span>CONDITIONAL β</span><b class="${beta!==null&&beta>=0?'positive':'negative'}">${effectFormat(row.beta)}</b></div><div><span>P VALUE</span><b>${pFormat(row.p,row.testable)}</b></div><div><span>−LOG10 P</span><b>${pScore===null?'—':pScore.toFixed(2)}</b></div><div><span>CONDITIONED ON</span><b>${esc(row.conditioned_on_n??'—')}</b></div><div><span>MAF</span><b>${numeric(row.maf)===null?'—':numeric(row.maf).toPrecision(4)}</b></div><div><span>MAF CLASS</span><b>${esc(row.maf_class||'unknown')}</b></div></div><section class="annotation"><h3>Conditional test details</h3><dl><div><dt>Region</dt><dd>${esc(regionLabel(item.region_id))}</dd></div><div><dt>Marker order</dt><dd>${esc(row.marker_order??'—')}</dd></div><div><dt>Standard error</dt><dd>${effectFormat(row.se)}</dd></div><div><dt>Sample size</dt><dd>${esc(row.n??'—')}</dd></div><div><dt>Testable</dt><dd>${esc(row.testable??'—')}</dd></div><div><dt>GIM edge threshold</dt><dd>P ≤ ${conditionalP.toExponential(3)}</dd></div></dl></section></div>`;
   renderHeatmap(item,false);
 }
 function renderHeatmap(item,resetDetail=true){
@@ -220,7 +230,7 @@ function renderHeatmap(item,resetDetail=true){
   const cellSize=Math.max(22,Math.round(42*zoom)),labelWidth=Math.round(166*Math.max(zoom,.88)),longest=Math.max(12,...metabolites.map(x=>String(x).length)),headerHeight=Math.max(150,Math.min(330,Math.ceil(longest*7.3+26)));
   let out=`<div class="heatmap-grid" style="--cols:${metabolites.length};--rows:${snps.length};--cell:${cellSize}px;--label:${labelWidth}px;--header:${headerHeight}px"><div class="corner"><span>Metabolites →</span><b>Independent SNPs ↓</b></div>`;
   out+=metabolites.map(m=>`<div class="column-label" title="${esc(m)}"><span>${esc(m)}</span></div>`).join('');
-  for(const snp of snps){out+=`<div class="row-label">${esc(snp)}${group.orders[snp]!==null&&group.orders[snp]!==undefined?` · ${group.orders[snp]}`:''}</div>`;for(const metabolite of metabolites){const row=lookup.get(`${snp}\u0000${metabolite}`),retained=isRetained(row),hidden=associationView==='retained'&&!retained,active=selectedCell&&String(selectedCell.snp_id)===snp&&String(selectedCell.metabolite)===metabolite;const pScore=row?score(row.p):null;const text=cellSize>=34&&pScore!==null?pScore.toFixed(pScore>=100?0:1):'';const title=row?`${snp} × ${metabolite}\nβ ${effectFormat(row.beta)} · P ${pFormat(row.p,row.testable)}${retained?' · retained association':''}`:'Not tested';out+=`<button class="heat-cell ${retained?'retained':''} ${hidden?'hidden':''} ${active?'selected':''}" ${!row||hidden?'disabled':''} data-snp="${esc(snp)}" data-metabolite="${esc(metabolite)}" style="background:${hidden?'#f7f9f9':heatColor(row?.beta,maxAbs)}" title="${esc(title)}"><span>${hidden?'':text}</span></button>`}}
+  for(const snp of snps){out+=`<div class="row-label">${esc(snp)}${group.orders[snp]!==null&&group.orders[snp]!==undefined?` · ${group.orders[snp]}`:''}${group.mafClass?.[snp]?` · ${esc(group.mafClass[snp])}`:''}</div>`;for(const metabolite of metabolites){const row=lookup.get(`${snp}\u0000${metabolite}`),retained=isRetained(row),hidden=associationView==='retained'&&!retained,active=selectedCell&&String(selectedCell.snp_id)===snp&&String(selectedCell.metabolite)===metabolite;const pScore=row?score(row.p):null;const text=cellSize>=34&&pScore!==null?pScore.toFixed(pScore>=100?0:1):'';const title=row?`${snp} × ${metabolite}\nβ ${effectFormat(row.beta)} · P ${pFormat(row.p,row.testable)} · MAF ${numeric(row.maf)===null?'unknown':numeric(row.maf).toPrecision(4)} (${row.maf_class||'unknown'})${retained?' · retained association':''}`:'Not tested';out+=`<button class="heat-cell ${retained?'retained':''} ${hidden?'hidden':''} ${active?'selected':''}" ${!row||hidden?'disabled':''} data-snp="${esc(snp)}" data-metabolite="${esc(metabolite)}" style="background:${hidden?'#f7f9f9':heatColor(row?.beta,maxAbs)}" title="${esc(title)}"><span>${hidden?'':text}</span></button>`}}
   out+='</div>';
   document.querySelector('#heatmap').innerHTML=out;
   for(const button of document.querySelectorAll('.heat-cell:not(:disabled)')){button.addEventListener('click',()=>{const row=lookup.get(`${button.dataset.snp}\u0000${button.dataset.metabolite}`);if(row)openDetail(row,item)})}
