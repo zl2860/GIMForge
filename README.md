@@ -325,67 +325,26 @@ Confirm that:
 
 ## 4. Run GIMForge
 
-### 4.1 GIM definition in pseudocode
+### 4.1 Algorithm 1: Definition of genetically influenced metabotypes
 
-```text
-INPUT
-  mGWAS summary statistics
-  LD genotype (the study genotype in the examples below, or an external panel)
-  individual-level study genotype, metabolite phenotypes, and covariates
-
-1. DEFINE CANDIDATE REGIONS
-   for each metabolite:
-       keep associations with 0 < P <= sentinel_p
-       LD-clump them within that metabolite to obtain sentinels
-
-   for each sentinel:
-       construct its LD span from variants with r² >= ld_span_r2
-
-   link cross-metabolite sentinel signals when they share a sentinel or
-   have r² > cross_metabolite_merge_r2
-   add region padding and merge overlapping spans
-
-2. FIND TRAIT-SPECIFIC INDEPENDENT SIGNALS
-   for each region R:
-       M_R = metabolites assigned to R
-       V_R = empty set
-
-       for each metabolite m in M_R:
-           selected = []
-           repeat:
-               test every eligible regional variant for m,
-               conditioning on selected
-               best = variant with the smallest conditional P
-               stop if no valid best exists or best.P > conditional_p
-               add best to selected
-
-           jointly retest each selected variant while conditioning on
-           all other selected variants
-           add retained variants to V_R
-           if the optional single-forward-lead fallback applies:
-               add that lead to V_R
-
-3. BUILD THE ORDERED SNP × METABOLITE MATRIX
-   ordered = []
-   remaining = V_R
-
-   while remaining is not empty:
-       test every (variant in remaining) × (metabolite in M_R),
-       conditioning on ordered variants
-       best_cell = tested pair with the smallest conditional P
-       stop if no valid cell exists or best_cell.P > conditional_p
-       add best_cell.variant to ordered
-       store that variant's conditional result for every metabolite in M_R
-       remove that variant from remaining
-
-4. DEFINE GIMs
-   retain matrix cells with P <= conditional_p as SNP–metabolite edges
-   construct a bipartite graph from those edges
-   each connected component within a region is one GIM
-
-OUTPUT
-  GIM membership, conditional association matrix, MAF classes, and HTML report
-```
+| Line | Procedure |
+| ---: | --- |
+| **Input** | Trait-specific mGWAS statistics `S`; LD genotype `L` (the study genotype in the examples below, or an external panel); individual-level study genotype `G`; metabolite phenotypes `Y`; covariates `C`; thresholds `sentinel_p`, `ld_span_r2`, `cross_metabolite_merge_r2`, and `conditional_p`. |
+| **1** | **for each** metabolite `m`, retain rows in `S_m` with `0 < P <= sentinel_p` and LD-clump them within `m` to obtain sentinel signals. |
+| **2** | **for each** sentinel, use `L` to construct its span from variants with `r² >= ld_span_r2`; use the configured fallback window when no LD neighbour qualifies. |
+| **3** | Link cross-metabolite signals that share a sentinel or have `r² > cross_metabolite_merge_r2`; add padding and merge overlapping spans to obtain candidate regions. |
+| **4** | **for each** region `R`, let `M_R` be its metabolites and initialize the candidate-variant set `V_R ← ∅`. |
+| **5** | &emsp;**for each** metabolite `m ∈ M_R`, initialize the forward-selected set `F_m ← ∅`. |
+| **6** | &emsp;&emsp;Test every eligible variant in `R` for `m`, using `G`, `Y`, and `C`, while conditioning on `F_m`; let `v*` have the smallest valid conditional P value. |
+| **7** | &emsp;&emsp;**if** no valid `v*` exists or `P(v*) > conditional_p`, stop forward selection for `m`; **otherwise** add `v*` to `F_m` and repeat line 6. |
+| **8** | &emsp;Jointly retest every `v ∈ F_m` while conditioning on `F_m \ {v}`; add retained variants to `V_R`. Apply the optional single-forward-lead fallback when configured. |
+| **9** | Initialize the ordered-marker list `O_R ← []` and remaining variants `U_R ← V_R`. |
+| **10** | &emsp;**while** `U_R` is not empty, test every pair in `U_R × M_R` while conditioning on the lower-order markers in `O_R`. |
+| **11** | &emsp;Let `(v*, m*)` be the valid matrix cell with the smallest conditional P value; **if** none exists or `P(v*, m*) > conditional_p`, stop. |
+| **12** | &emsp;Append `v*` to `O_R`, store its conditional result for every `m ∈ M_R`, remove `v*` from `U_R`, and return to line 10. |
+| **13** | Retain stored cells with `P <= conditional_p` as the bipartite SNP–metabolite edge set `E_R`. |
+| **14** | Define every connected component of the graph `(O_R, M_R, E_R)` as one GIM. |
+| **Output** | GIM membership, the ordered conditional association matrix, MAF classes, provenance, and the interactive HTML report. |
 
 The complete statistical and region-merging details are in
 [Method](#12-method).
