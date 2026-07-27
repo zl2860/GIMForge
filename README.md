@@ -11,7 +11,7 @@ writes GIM membership tables plus an offline interactive HTML report.
 ![GIMForge workflow: region definition, conditional signals, ordered SNP by metabolite matrix, and genetically influenced metabotypes](docs/gimforge-workflow.svg)
 
 <p>
-  <a href="#4-run-gimforge"><kbd><strong>Already familiar with the settings? Skip to the quick run example →</strong></kbd></a>
+  <a href="#42-quick-run-example"><kbd><strong>Already familiar with the settings? Skip to the quick run example →</strong></kbd></a>
 </p>
 
 ## What you need
@@ -324,6 +324,73 @@ Confirm that:
 7. The output directory is new or empty.
 
 ## 4. Run GIMForge
+
+### 4.1 GIM definition in pseudocode
+
+```text
+INPUT
+  mGWAS summary statistics
+  LD genotype (the study genotype in the examples below, or an external panel)
+  individual-level study genotype, metabolite phenotypes, and covariates
+
+1. DEFINE CANDIDATE REGIONS
+   for each metabolite:
+       keep associations with 0 < P <= sentinel_p
+       LD-clump them within that metabolite to obtain sentinels
+
+   for each sentinel:
+       construct its LD span from variants with r² >= ld_span_r2
+
+   link cross-metabolite sentinel signals when they share a sentinel or
+   have r² > cross_metabolite_merge_r2
+   add region padding and merge overlapping spans
+
+2. FIND TRAIT-SPECIFIC INDEPENDENT SIGNALS
+   for each region R:
+       M_R = metabolites assigned to R
+       V_R = empty set
+
+       for each metabolite m in M_R:
+           selected = []
+           repeat:
+               test every eligible regional variant for m,
+               conditioning on selected
+               best = variant with the smallest conditional P
+               stop if no valid best exists or best.P > conditional_p
+               add best to selected
+
+           jointly retest each selected variant while conditioning on
+           all other selected variants
+           add retained variants to V_R
+           if the optional single-forward-lead fallback applies:
+               add that lead to V_R
+
+3. BUILD THE ORDERED SNP × METABOLITE MATRIX
+   ordered = []
+   remaining = V_R
+
+   while remaining is not empty:
+       test every (variant in remaining) × (metabolite in M_R),
+       conditioning on ordered variants
+       best_cell = tested pair with the smallest conditional P
+       stop if no valid cell exists or best_cell.P > conditional_p
+       add best_cell.variant to ordered
+       store that variant's conditional result for every metabolite in M_R
+       remove that variant from remaining
+
+4. DEFINE GIMs
+   retain matrix cells with P <= conditional_p as SNP–metabolite edges
+   construct a bipartite graph from those edges
+   each connected component within a region is one GIM
+
+OUTPUT
+  GIM membership, conditional association matrix, MAF classes, and HTML report
+```
+
+The complete statistical and region-merging details are in
+[Method](#12-method).
+
+### 4.2 Quick run example
 
 Start with one region as a smoke test:
 
