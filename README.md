@@ -330,10 +330,10 @@ Start with one region as a smoke test:
 ```bash
 gimforge run \
   --sumstats-manifest data/mgwas_files.tsv \
-  --ancestry EAS \
-  --ld-bfile reference/1000G_phase3_EAS \
-  --ld-panel-name "1000 Genomes Phase 3 EAS (GRCh37)" \
   --bfile data/cohort \
+  --use-analysis-genotype-for-ld \
+  --ancestry EAS \
+  --ld-panel-name "Study cohort EAS genotype reused for LD" \
   --phenotypes data/phenotypes.tsv \
   --covariates data/covariates.tsv \
   --maf-min 0.0001 \
@@ -344,6 +344,18 @@ gimforge run \
   --max-regions 1 \
   --out results/smoke-test
 ```
+
+To use an existing external LD reference panel instead, remove
+`--use-analysis-genotype-for-ld` and replace the study-cohort panel label
+with:
+
+```bash
+--ld-bfile reference/1000G_phase3_EAS \
+--ld-panel-name "1000 Genomes Phase 3 EAS (GRCh37)"
+```
+
+Keep `--bfile data/cohort`: it is still the individual-level genotype used
+for conditional analysis.
 
 If PLINK2 is not in `PATH`, add:
 
@@ -356,10 +368,10 @@ For the full run, remove `--max-regions 1` and use a new output directory:
 ```bash
 gimforge run \
   --sumstats-manifest data/mgwas_files.tsv \
-  --ancestry EAS \
-  --ld-bfile reference/1000G_phase3_EAS \
-  --ld-panel-name "1000 Genomes Phase 3 EAS (GRCh37)" \
   --bfile data/cohort \
+  --use-analysis-genotype-for-ld \
+  --ancestry EAS \
+  --ld-panel-name "Study cohort EAS genotype reused for LD" \
   --phenotypes data/phenotypes.tsv \
   --covariates data/covariates.tsv \
   --maf-min 0.0001 \
@@ -369,6 +381,10 @@ gimforge run \
   --threads 8 \
   --out results/gimforge
 ```
+
+For an existing external LD panel, make the same substitution shown directly
+below the smoke-test command; do not supply `--ld-bfile` and
+`--use-analysis-genotype-for-ld` together.
 
 To review trait-specific clumping before the conditional analysis, run
 `gimforge clump` first and resume with `--sentinels`. See
@@ -1063,16 +1079,26 @@ Run one candidate region:
 ```bash
 gimforge run \
   --sumstats-manifest data/mgwas_files.tsv \
-  --ancestry EAS \
-  --ld-bfile reference/1000G.EAS.QC \
-  --ld-panel-name "1000 Genomes Phase 3 EAS, S-LDSC archive (GRCh37)" \
   --bfile data/cohort \
+  --use-analysis-genotype-for-ld \
+  --ancestry EAS \
+  --ld-panel-name "Study cohort EAS genotype reused for LD" \
   --phenotypes data/phenotypes.tsv \
   --covariates data/covariates.tsv \
   --threads 8 \
   --max-regions 1 \
   --out results/smoke-test
 ```
+
+To use an existing LD reference panel instead, remove
+`--use-analysis-genotype-for-ld` and replace the panel label with:
+
+```bash
+--ld-bfile reference/1000G.EAS.QC \
+--ld-panel-name "1000 Genomes Phase 3 EAS, S-LDSC archive (GRCh37)"
+```
+
+The study genotype remains `--bfile data/cohort`.
 
 Inspect:
 
@@ -1091,10 +1117,10 @@ Remove `--max-regions 1` and choose a new output directory:
 ```bash
 gimforge run \
   --sumstats-manifest data/mgwas_files.tsv \
-  --ancestry EAS \
-  --ld-bfile reference/1000G.EAS.QC \
-  --ld-panel-name "1000 Genomes Phase 3 EAS, S-LDSC archive (GRCh37)" \
   --bfile data/cohort \
+  --use-analysis-genotype-for-ld \
+  --ancestry EAS \
+  --ld-panel-name "Study cohort EAS genotype reused for LD" \
   --phenotypes data/phenotypes.tsv \
   --covariates data/covariates.tsv \
   --genetic-model additive \
@@ -1103,20 +1129,30 @@ gimforge run \
   --out results/gimforge
 ```
 
+With an existing external LD panel, replace
+`--use-analysis-genotype-for-ld` and its label with
+`--ld-bfile reference/1000G.EAS.QC` plus the appropriate
+`--ld-panel-name`.
+
 ### 9.4 Full run from a stacked table
 
 ```bash
 gimforge run \
   --sumstats data/all_metabolites.tsv.gz \
-  --ancestry EAS \
-  --ld-bfile reference/1000G.EAS.QC \
-  --ld-panel-name "1000 Genomes Phase 3 EAS, S-LDSC archive (GRCh37)" \
   --bfile data/cohort \
+  --use-analysis-genotype-for-ld \
+  --ancestry EAS \
+  --ld-panel-name "Study cohort EAS genotype reused for LD" \
   --phenotypes data/phenotypes.tsv \
   --covariates data/covariates.tsv \
   --threads 8 \
   --out results/gimforge
 ```
+
+With an existing external LD panel, replace
+`--use-analysis-genotype-for-ld` and its label with
+`--ld-bfile reference/1000G.EAS.QC` plus the appropriate
+`--ld-panel-name`.
 
 ### 9.5 Review clumping before the full run
 
@@ -1126,8 +1162,8 @@ Use `gimforge clump` to review, version, or share trait-specific sentinels:
 gimforge clump \
   --sumstats-manifest data/mgwas_files.tsv \
   --ancestry EAS \
-  --ld-bfile reference/1000G.EAS.QC \
-  --ld-panel-name "1000 Genomes Phase 3 EAS, S-LDSC archive (GRCh37)" \
+  --ld-bfile data/cohort \
+  --ld-panel-name "Study cohort EAS genotype used for LD" \
   --sentinel-p 1.25e-11 \
   --sentinel-clump-r2 0.1 \
   --sentinel-clump-window-kb 1000000 \
@@ -1139,21 +1175,34 @@ gimforge clump \
   --out results/clumping
 ```
 
+The `clump` subcommand has no separate `--bfile` argument. To use an existing
+external LD panel, replace `--ld-bfile data/cohort` and its label with:
+
+```bash
+--ld-bfile reference/1000G.EAS.QC \
+--ld-panel-name "1000 Genomes Phase 3 EAS, S-LDSC archive (GRCh37)"
+```
+
 It writes `sentinels.tsv`, `run_manifest.json`, and `run.log`. Continue after
 review without reclumping:
 
 ```bash
 gimforge run \
   --sentinels results/clumping/sentinels.tsv \
-  --ancestry EAS \
-  --ld-bfile reference/1000G.EAS.QC \
-  --ld-panel-name "1000 Genomes Phase 3 EAS, S-LDSC archive (GRCh37)" \
   --bfile data/cohort \
+  --use-analysis-genotype-for-ld \
+  --ancestry EAS \
+  --ld-panel-name "Study cohort EAS genotype reused for LD" \
   --phenotypes data/phenotypes.tsv \
   --covariates data/covariates.tsv \
   --threads 8 \
   --out results/gimforge
 ```
+
+With an existing external LD panel, replace
+`--use-analysis-genotype-for-ld` and its label with
+`--ld-bfile reference/1000G.EAS.QC` plus the appropriate
+`--ld-panel-name`.
 
 ### 9.6 Run selected regions
 
