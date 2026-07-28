@@ -17,13 +17,15 @@ class GIMParameters:
     BED file.
     """
 
-    sentinel_p: float = 1.25e-11
-    conditional_p: float = 1.24741348813236e-8
+    sentinel_p: float = 5e-5
+    conditional_p: float = 5e-5
+    gim_matrix_p: float = 5e-5
+    gim_edge_p: float = 5e-5
     sentinel_clump_r2: float = 0.1
-    sentinel_clump_window_kb: int = 1_000_000
+    sentinel_clump_window_kb: int = 1_000
     ld_span_r2: float = 0.1
     cross_metabolite_merge_r2: float = 0.6
-    ld_window_kb: int = 1_000_000
+    ld_window_kb: int = 1_000
     no_ld_half_width_kb: int = 500
     region_padding_kb: int = 250
     mac_min: int = 10
@@ -41,6 +43,8 @@ class GIMParameters:
         for name in (
             "sentinel_p",
             "conditional_p",
+            "gim_matrix_p",
+            "gim_edge_p",
             "sentinel_clump_r2",
             "ld_span_r2",
             "cross_metabolite_merge_r2",

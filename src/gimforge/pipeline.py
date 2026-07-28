@@ -122,7 +122,14 @@ def run_gim(
         bolt_genetic_map=resolved_bolt_genetic_map,
     )
     progress("Assembling significant SNP–trait edges into GIM connected components")
-    components = components_from_matrix(conditional["matrix_out"], conditional_p=parameters.conditional_p) if conditional["matrix_out"] else {"edges": [], "members": [], "gim_summary": []}
+    components = (
+        components_from_matrix(
+            conditional["matrix_out"],
+            gim_edge_p=parameters.gim_edge_p,
+        )
+        if conditional["matrix_out"]
+        else {"edges": [], "members": [], "gim_summary": []}
+    )
     result: dict[str, object] = {**region_result, **conditional, **components}
     progress("Writing result tables")
     _write_result(output, result)  # type: ignore[arg-type]
@@ -210,7 +217,8 @@ def run_gim(
     progress("Writing interactive HTML report")
     write_report(
         output / "report.html", matrix_out=result["matrix_out"], members=result["members"],
-        gim_summary=result["gim_summary"], edges=result["edges"], regions=result["regions"], conditional_p=parameters.conditional_p,
+        gim_summary=result["gim_summary"], edges=result["edges"], regions=result["regions"],
+        gim_edge_p=parameters.gim_edge_p,
         metadata={
             "LD reference panel": panel_label,
             "LD reference ancestry": ancestry,
@@ -246,6 +254,8 @@ def run_gim(
             "Cross-metabolite merge r²": parameters.cross_metabolite_merge_r2,
             "No-LD half-window / padding": f"{parameters.no_ld_half_width_kb:,} / {parameters.region_padding_kb:,} kb",
             "Conditional P threshold": parameters.conditional_p,
+            "GIM matrix P threshold": parameters.gim_matrix_p,
+            "GIM edge P threshold": parameters.gim_edge_p,
             "MAF classification": (
                 "rare ≤1%; low-frequency >1% to ≤5%; common >5%; "
                 "study-genotype frequency; no WES validation"

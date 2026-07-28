@@ -11,7 +11,7 @@ class ComponentDefinitionTests(unittest.TestCase):
             {"region_id": "R", "marker_order": 3, "snp_id": "v3", "metabolite": "b", "maf": 0.2, "p": 1e-12},
             {"region_id": "R", "marker_order": 1, "snp_id": "v1", "metabolite": "b", "maf": 0.005, "p": 0.4},
         ]
-        result = components_from_matrix(matrix, conditional_p=1e-8)
+        result = components_from_matrix(matrix, gim_edge_p=1e-8)
         self.assertEqual(len(result["gim_summary"]), 2)
         first, second = result["gim_summary"]
         self.assertEqual((first["snps"], first["metabolites"]), ("v1;v2", "a"))

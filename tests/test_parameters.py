@@ -4,6 +4,15 @@ from gimforge.parameters import parameters_from_args
 
 
 class ParameterTests(unittest.TestCase):
+    def test_updated_analysis_defaults_are_explicit(self):
+        parameters = parameters_from_args()
+        self.assertEqual(parameters.sentinel_p, 5e-5)
+        self.assertEqual(parameters.conditional_p, 5e-5)
+        self.assertEqual(parameters.gim_matrix_p, 5e-5)
+        self.assertEqual(parameters.gim_edge_p, 5e-5)
+        self.assertEqual(parameters.sentinel_clump_window_kb, 1_000)
+        self.assertEqual(parameters.ld_window_kb, 1_000)
+
     def test_region_controls_are_independently_configurable(self):
         parameters = parameters_from_args(
             {
@@ -30,6 +39,18 @@ class ParameterTests(unittest.TestCase):
                     "cross_metabolite_merge_r2": 0.1,
                 }
             )
+
+    def test_conditional_matrix_and_edge_thresholds_are_independent(self):
+        parameters = parameters_from_args(
+            {
+                "conditional_p": 1e-8,
+                "gim_matrix_p": 5e-8,
+                "gim_edge_p": 1e-6,
+            }
+        )
+        self.assertEqual(parameters.conditional_p, 1e-8)
+        self.assertEqual(parameters.gim_matrix_p, 5e-8)
+        self.assertEqual(parameters.gim_edge_p, 1e-6)
 
     def test_linear_models_support_three_genotype_encodings(self):
         for genetic_model in ("additive", "dominant", "recessive"):
@@ -78,6 +99,8 @@ class ParameterTests(unittest.TestCase):
             {"hwe_p_min": 0},
             {"hwe_p_min": 1.1},
             {"geno_missing_max": 1},
+            {"gim_matrix_p": 0},
+            {"gim_edge_p": 1},
         ):
             with self.subTest(overrides=overrides):
                 with self.assertRaises(ValueError):

@@ -106,6 +106,12 @@ class CliTests(unittest.TestCase):
                 "1e-6",
                 "--geno-missing-max",
                 "0.05",
+                "--conditional-p",
+                "1e-8",
+                "--gim-matrix-p",
+                "5e-8",
+                "--gim-edge-p",
+                "1e-6",
             ]
         )
         self.assertEqual(args.genetic_model, "dominant")
@@ -114,6 +120,22 @@ class CliTests(unittest.TestCase):
         self.assertEqual(args.maf_min, 0.0001)
         self.assertEqual(args.hwe_p_min, 1e-6)
         self.assertEqual(args.geno_missing_max, 0.05)
+        self.assertEqual(args.conditional_p, 1e-8)
+        self.assertEqual(args.gim_matrix_p, 5e-8)
+        self.assertEqual(args.gim_edge_p, 1e-6)
+
+    def test_components_accepts_new_edge_flag_and_legacy_alias(self):
+        base = [
+            "components",
+            "--matrix-out",
+            "matrix.tsv.gz",
+            "--out",
+            "components-result",
+        ]
+        args = build_parser().parse_args([*base, "--gim-edge-p", "5e-6"])
+        self.assertEqual(args.gim_edge_p, 5e-6)
+        legacy = build_parser().parse_args([*base, "--conditional-p", "2e-6"])
+        self.assertEqual(legacy.gim_edge_p, 2e-6)
 
     def test_run_can_explicitly_reuse_analysis_genotype_for_ld(self):
         args = build_parser().parse_args(

@@ -51,7 +51,7 @@ class ReportTests(unittest.TestCase):
                 matrix_out=matrix,
                 members=members,
                 gim_summary=summary,
-                conditional_p=5e-8,
+                gim_edge_p=5e-8,
                 metadata={"LD reference ancestry": "EAS"},
             )
             report = path.read_text()

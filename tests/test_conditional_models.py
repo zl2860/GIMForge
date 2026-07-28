@@ -6,6 +6,8 @@ from unittest.mock import patch
 from gimforge.conditional import (
     _BOLTConditionalRunner,
     _PLINKConditionalRunner,
+    _build_matrix,
+    _forward_select,
     _read_bolt_stats,
     _read_glm,
 )
@@ -13,6 +15,49 @@ from gimforge.parameters import parameters_from_args
 
 
 class ConditionalModelTests(unittest.TestCase):
+    def test_forward_and_matrix_stages_use_their_own_thresholds(self):
+        class FixedRunner:
+            def __init__(self):
+                self.parameters = parameters_from_args(
+                    {
+                        "conditional_p": 1e-8,
+                        "gim_matrix_p": 1e-4,
+                    }
+                )
+
+            def scan(self, *, metabolites, **_kwargs):
+                row = {
+                    "snp_id": "rs1",
+                    "a1_freq": 0.2,
+                    "maf": 0.2,
+                    "maf_class": "common",
+                    "p": 5e-5,
+                    "beta": 0.2,
+                    "se": 0.05,
+                    "n": 100,
+                }
+                return {metabolite: [dict(row)] for metabolite in metabolites}
+
+        runner = FixedRunner()
+        region = {
+            "region_id": "R",
+            "chromosome": "1",
+            "start": 1,
+            "end": 100,
+        }
+        self.assertEqual(
+            _forward_select(runner, region=region, metabolite="M1"),
+            [],
+        )
+        markers, matrix = _build_matrix(
+            runner,
+            region=region,
+            metabolites=["M1"],
+            independent=[{"snp_id": "rs1"}],
+        )
+        self.assertEqual([row["snp_id"] for row in markers], ["rs1"])
+        self.assertEqual(matrix[0]["p"], 5e-5)
+
     def test_plink_primary_row_is_read_under_all_supported_encodings(self):
         with tempfile.TemporaryDirectory(prefix="gimforge_model_test_") as directory:
             report = Path(directory) / "test.glm.linear"

@@ -40,13 +40,15 @@ def _sumstats_columns(args: argparse.Namespace) -> dict[str, str]:
 
 def _parameter_arguments(parser: argparse.ArgumentParser) -> None:
     group = parser.add_argument_group("GIM parameters")
-    group.add_argument("--sentinel-p", type=float, default=1.25e-11, help="mGWAS P threshold for metabolite-specific sentinel candidates")
-    group.add_argument("--conditional-p", type=float, default=1.24741348813236e-8, help="threshold for conditional selection and GIM edges")
+    group.add_argument("--sentinel-p", type=float, default=5e-5, help="mGWAS P threshold for metabolite-specific sentinel candidates")
+    group.add_argument("--conditional-p", type=float, default=5e-5, help="threshold for forward selection and full-model retention")
+    group.add_argument("--gim-matrix-p", type=float, default=5e-5, help="threshold for selecting the next marker in the ordered GIM matrix")
+    group.add_argument("--gim-edge-p", type=float, default=5e-5, help="threshold for retaining final SNP–metabolite GIM edges")
     group.add_argument("--sentinel-clump-r2", type=float, default=0.1, help="r² for same-metabolite sentinel clumping")
-    group.add_argument("--sentinel-clump-window-kb", type=int, default=1_000_000, help="physical window for sentinel clumping")
+    group.add_argument("--sentinel-clump-window-kb", type=int, default=1_000, help="physical window for sentinel clumping")
     group.add_argument("--ld-span-r2", type=float, default=0.1, help="r² threshold for sentinel LD spans")
     group.add_argument("--cross-metabolite-merge-r2", type=float, default=0.6, help="r² for cross-metabolite sentinel merging")
-    group.add_argument("--ld-window-kb", type=int, default=1_000_000, help="LD search window used to construct sentinel spans")
+    group.add_argument("--ld-window-kb", type=int, default=1_000, help="LD search window used to construct sentinel spans")
     group.add_argument("--no-ld-half-width-kb", type=int, default=500, help="sentinel half-width when no LD neighbour exists")
     group.add_argument("--region-padding-kb", type=int, default=250, help="padding added after merging LD spans")
     group.add_argument("--mac-min", type=int, default=10, help="minimum minor allele count")
@@ -79,7 +81,10 @@ def _parameter_arguments(parser: argparse.ArgumentParser) -> None:
 
 def _parameters(args: argparse.Namespace):
     return parameters_from_args({
-        "sentinel_p": args.sentinel_p, "conditional_p": args.conditional_p,
+        "sentinel_p": args.sentinel_p,
+        "conditional_p": args.conditional_p,
+        "gim_matrix_p": args.gim_matrix_p,
+        "gim_edge_p": args.gim_edge_p,
         "sentinel_clump_r2": args.sentinel_clump_r2,
         "sentinel_clump_window_kb": args.sentinel_clump_window_kb,
         "ld_span_r2": args.ld_span_r2,
@@ -103,12 +108,12 @@ def _parameters(args: argparse.Namespace):
 def _write_component_result(
     output: Path,
     matrix: list[dict[str, str]],
-    conditional_p: float,
+    gim_edge_p: float,
     reference_panel: str | None = None,
     ancestry: str | None = None,
 ) -> None:
     output.mkdir(parents=True, exist_ok=True)
-    components = components_from_matrix(matrix, conditional_p=conditional_p)
+    components = components_from_matrix(matrix, gim_edge_p=gim_edge_p)
     for name in ("edges", "members", "gim_summary"):
         suffix = ".tsv" if name == "gim_summary" else ".tsv.gz"
         write_table(output / f"{name}{suffix}", components[name], fieldnames=_FIELDS[name])
@@ -117,7 +122,7 @@ def _write_component_result(
         output / "run_manifest.json",
         {
             "method": "GIMForge components from an existing ordered conditional matrix",
-            "conditional_p": conditional_p,
+            "gim_edge_p": gim_edge_p,
             "inputs": {
                 "ld_reference_bfile": "not available from matrix-only input",
                 "ld_reference_panel_name": reference_panel or "not recorded in matrix input",
@@ -127,12 +132,12 @@ def _write_component_result(
     )
     write_report(
         output / "report.html", matrix_out=components["matrix_out"], members=components["members"],
-        gim_summary=components["gim_summary"], edges=components["edges"], conditional_p=conditional_p,
+        gim_summary=components["gim_summary"], edges=components["edges"], gim_edge_p=gim_edge_p,
         metadata={
             "Input": "existing ordered matrix_out",
             "LD reference panel": reference_panel or "not recorded in matrix input",
             "LD reference ancestry": ancestry or "not recorded in matrix input",
-            "Conditional P threshold": conditional_p,
+            "GIM edge P threshold": gim_edge_p,
         },
     )
 
@@ -149,9 +154,9 @@ def build_parser() -> argparse.ArgumentParser:
     clump_parser.add_argument("--ld-panel-name", help="human-readable panel release/name recorded in the manifest")
     clump_parser.add_argument("--out", required=True, help="new output directory for sentinels.tsv, run_manifest.json, and run.log")
     clump_parser.add_argument("--plink2", help="PLINK2 executable; defaults to plink2 in PATH")
-    clump_parser.add_argument("--sentinel-p", type=float, default=1.25e-11)
+    clump_parser.add_argument("--sentinel-p", type=float, default=5e-5)
     clump_parser.add_argument("--sentinel-clump-r2", type=float, default=0.1)
-    clump_parser.add_argument("--sentinel-clump-window-kb", type=int, default=1_000_000)
+    clump_parser.add_argument("--sentinel-clump-window-kb", type=int, default=1_000)
     clump_parser.add_argument("--mac-min", type=int, default=10, help="minimum minor allele count")
     clump_parser.add_argument("--maf-min", type=float, default=None, help="optional minimum minor allele frequency")
     clump_parser.add_argument("--hwe-p-min", type=float, default=None, help="optional minimum Hardy-Weinberg equilibrium P value")
@@ -203,13 +208,26 @@ def build_parser() -> argparse.ArgumentParser:
     component_parser = subparsers.add_parser("components", help="create GIMs and report.html from an existing ordered matrix_out")
     component_parser.add_argument("--matrix-out", required=True)
     component_parser.add_argument("--out", required=True)
-    component_parser.add_argument("--conditional-p", type=float, default=1.24741348813236e-8)
+    component_parser.add_argument(
+        "--gim-edge-p",
+        "--conditional-p",
+        dest="gim_edge_p",
+        type=float,
+        default=5e-5,
+        help="GIM edge threshold; --conditional-p is retained as a compatibility alias",
+    )
     component_parser.add_argument("--reference-panel", help="reference-panel provenance label for a precomputed matrix")
     component_parser.add_argument("--ancestry", choices=_ANCESTRIES, help="reference-panel ancestry for a precomputed matrix")
     report_parser = subparsers.add_parser("report", help="(re)write report.html from a completed result directory")
     report_parser.add_argument("--results", required=True)
     report_parser.add_argument("--out", help="HTML path; defaults to RESULTS/report.html")
-    report_parser.add_argument("--conditional-p", type=float, help="override the threshold recorded in run_manifest.json")
+    report_parser.add_argument(
+        "--gim-edge-p",
+        "--conditional-p",
+        dest="gim_edge_p",
+        type=float,
+        help="override the GIM edge threshold recorded in run_manifest.json",
+    )
     doctor_parser = subparsers.add_parser(
         "doctor", help="check Python, PLINK2, and optional mixed-model dependencies"
     )
@@ -292,7 +310,9 @@ def main(argv: list[str] | None = None) -> int:
                 "Conditional configuration: "
                 f"regression={parameters.regression_model}; "
                 f"genetic_model={parameters.genetic_model}; "
-                f"P<={parameters.conditional_p:.6g}"
+                f"conditional_P<={parameters.conditional_p:.6g}; "
+                f"matrix_P<={parameters.gim_matrix_p:.6g}; "
+                f"edge_P<={parameters.gim_edge_p:.6g}"
             )
             progress("Checking PLINK2 dependency")
             if args.regression_model == "mixed":
@@ -329,7 +349,13 @@ def main(argv: list[str] | None = None) -> int:
                 version=__version__, command=command, log_path=output / "run.log"
             )
             progress("Reading and normalising existing ordered conditional matrix")
-            _write_component_result(output, read_table(args.matrix_out), args.conditional_p, args.reference_panel, args.ancestry)
+            _write_component_result(
+                output,
+                read_table(args.matrix_out),
+                args.gim_edge_p,
+                args.reference_panel,
+                args.ancestry,
+            )
             progress(f"Component outputs and report written to {output.resolve()}")
         elif args.command == "report":
             results = Path(args.results)
@@ -349,10 +375,12 @@ def main(argv: list[str] | None = None) -> int:
             inputs = manifest.get("inputs", {}) if isinstance(manifest, dict) else {}
             tools = manifest.get("tools", {}) if isinstance(manifest, dict) else {}
             recorded_parameters = manifest.get("parameters", {}) if isinstance(manifest, dict) else {}
-            recorded_p = recorded_parameters.get("conditional_p") if isinstance(recorded_parameters, dict) else None
+            recorded_p = recorded_parameters.get("gim_edge_p") if isinstance(recorded_parameters, dict) else None
+            if recorded_p is None and isinstance(recorded_parameters, dict):
+                recorded_p = recorded_parameters.get("conditional_p")
             if recorded_p is None and isinstance(manifest, dict):
-                recorded_p = manifest.get("conditional_p")
-            conditional_p = args.conditional_p if args.conditional_p is not None else float(recorded_p or 1.24741348813236e-8)
+                recorded_p = manifest.get("gim_edge_p", manifest.get("conditional_p"))
+            gim_edge_p = args.gim_edge_p if args.gim_edge_p is not None else float(recorded_p or 5e-5)
             metadata = {
                 "LD reference panel": inputs.get("ld_reference_panel_name", "not recorded"),
                 "LD reference ancestry": inputs.get("ld_reference_ancestry", "not recorded"),
@@ -362,12 +390,12 @@ def main(argv: list[str] | None = None) -> int:
                 "BOLT-LMM": tools.get("bolt_version") or "not used",
                 "Genetic model": recorded_parameters.get("genetic_model", "additive"),
                 "Regression model": recorded_parameters.get("regression_model", "linear"),
-                "Conditional P threshold": conditional_p,
+                "GIM edge P threshold": gim_edge_p,
             }
             write_report(
                 args.out or results / "report.html", matrix_out=matrix, members=members,
                 gim_summary=summary, edges=edges, regions=read_table(regions_path) if regions_path.is_file() else [],
-                conditional_p=conditional_p, metadata=metadata,
+                gim_edge_p=gim_edge_p, metadata=metadata,
             )
             progress(f"Report written to {Path(args.out or results / 'report.html').resolve()}")
         else:

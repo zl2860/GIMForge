@@ -597,7 +597,7 @@ def _build_matrix(
                 if row["snp_id"] in remaining:
                     candidates.append({**row, "metabolite": metabolite})
         best = _top_association(candidates, set())
-        if best is None or float(best["p"]) > runner.parameters.conditional_p:
+        if best is None or float(best["p"]) > runner.parameters.gim_matrix_p:
             break
         snp_id = str(best["snp_id"])
         order = len(selected) + 1

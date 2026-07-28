@@ -42,7 +42,10 @@ def _column(rows: list[Mapping[str, object]], choices: tuple[str, ...], label: s
 
 
 def components_from_matrix(
-    matrix_out: Iterable[Mapping[str, object]], *, conditional_p: float
+    matrix_out: Iterable[Mapping[str, object]],
+    *,
+    gim_edge_p: float | None = None,
+    conditional_p: float | None = None,
 ) -> dict[str, list[dict[str, object]]]:
     """Define GIMs as significant connected components of the bipartite matrix.
 
@@ -51,6 +54,13 @@ def components_from_matrix(
     markers with lower ``marker_order``. This function intentionally does not
     re-order or re-fit that matrix; it is the final definition step.
     """
+
+    if gim_edge_p is None:
+        gim_edge_p = conditional_p if conditional_p is not None else 5e-5
+    elif conditional_p is not None and conditional_p != gim_edge_p:
+        raise ValueError("Specify only gim_edge_p; conditional_p is a compatibility alias.")
+    if not 0 < gim_edge_p < 1:
+        raise ValueError("gim_edge_p must lie strictly between 0 and 1.")
 
     rows = [dict(row) for row in matrix_out]
     p_column = _column(rows, ("p", "P", "p_value"), "a P-value column")
@@ -98,7 +108,7 @@ def components_from_matrix(
         if maf is not None:
             variant_mafs[(row["region_id"], row["snp_id"])].append(maf)
         normalised_rows.append(row)
-        if p_value is None or p_value < 0 or p_value > conditional_p:
+        if p_value is None or p_value < 0 or p_value > gim_edge_p:
             continue
         by_region[row["region_id"]].append(row)
 

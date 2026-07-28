@@ -23,15 +23,23 @@ def write_report(
     edges: Sequence[Mapping[str, object]] = (),
     regions: Sequence[Mapping[str, object]] = (),
     title: str = "GIMForge report",
-    conditional_p: float = 1.24741348813236e-8,
+    gim_edge_p: float | None = None,
+    conditional_p: float | None = None,
     metadata: Mapping[str, object] | None = None,
 ) -> Path:
     """Write a self-contained interactive report from the conditional matrix.
 
     The browser never re-fits, clusters, or smooths the result. Cell colour is
     the conditional beta, and the retained-edge border is determined only by
-    ``conditional_p``.
+    ``gim_edge_p``. ``conditional_p`` is retained as a compatibility alias.
     """
+
+    if gim_edge_p is None:
+        gim_edge_p = conditional_p if conditional_p is not None else 5e-5
+    elif conditional_p is not None and conditional_p != gim_edge_p:
+        raise ValueError("Specify only gim_edge_p; conditional_p is a compatibility alias.")
+    if not 0 < gim_edge_p < 1:
+        raise ValueError("gim_edge_p must lie strictly between 0 and 1.")
 
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -172,7 +180,7 @@ def write_report(
           <div class="legend"><span>β−</span><i class="negative"></i><i class="neutral"></i><i class="positive"></i><span>β+</span><b>dark border = retained association</b></div>
         </div>
         <div class="heatmap-scroll"><div id="heatmap"></div></div>
-        <p class="matrix-note"><b>Rows:</b> conditionally independent SNPs. <b>Columns:</b> metabolites belonging to this GIM. Colour encodes conditional β; dark borders identify associations retained at P ≤ __CONDITIONAL_P_TEXT__. Cell labels are −log<sub>10</sub>(P).</p>
+        <p class="matrix-note"><b>Rows:</b> conditionally independent SNPs. <b>Columns:</b> metabolites belonging to this GIM. Colour encodes conditional β; dark borders identify associations retained at P ≤ __GIM_EDGE_P_TEXT__. Cell labels are −log<sub>10</sub>(P).</p>
       </section>
       <aside class="detail-panel" id="detail"><div class="empty-detail">Select a heatmap cell to inspect its conditional association.</div></aside>
     </section>
@@ -183,7 +191,7 @@ const matrix=__MATRIX__;
 const members=__MEMBERS__;
 const summaryRaw=__SUMMARY__;
 const regions=__REGIONS__;
-const conditionalP=__CONDITIONAL_P__;
+const gimEdgeP=__GIM_EDGE_P__;
 let selectedId=null;
 let associationView='all';
 let zoom=1;
@@ -194,7 +202,7 @@ for(const row of members){const id=String(row.gim_id);if(!memberByGim.has(id))me
 const rowsByRegion=new Map();
 for(const row of matrix){const id=String(row.region_id);if(!rowsByRegion.has(id))rowsByRegion.set(id,[]);rowsByRegion.get(id).push(row);}
 function numeric(value){if(value===null||value===undefined||String(value).trim()==='')return null;const n=Number(value);return Number.isFinite(n)?n:null}
-function isRetained(row){const p=numeric(row?.p);return p!==null&&p>=0&&p<=conditionalP}
+function isRetained(row){const p=numeric(row?.p);return p!==null&&p>=0&&p<=gimEdgeP}
 function esc(value){const node=document.createElement('div');node.textContent=String(value??'');return node.innerHTML}
 function truthy(value){return value===true||['true','1','yes'].includes(String(value??'').toLowerCase())}
 function pFormat(value,testable=null){const p=numeric(value);if(p===0)return'< machine precision';if(p!==null&&p>0)return p.toExponential(2);return truthy(testable)?'result unavailable':'not tested'}
@@ -213,7 +221,7 @@ function heatColor(beta,maxAbs){const b=numeric(beta);if(b===null)return'#f4f6f6
 function openDetail(row,item){
   selectedCell=row;
   const retained=isRetained(row),beta=numeric(row.beta),pScore=score(row.p);
-  document.querySelector('#detail').innerHTML=`<header class="detail-head"><div><p class="eyebrow">GIM ASSOCIATION</p><h2>${esc(item.gim_id)}</h2></div><span class="status ${retained?'retained':''}">${retained?'Retained association':'Conditional test'}</span></header><div class="detail-body"><div class="selected-pair"><span>${esc(row.snp_id)}</span><b>×</b><span>${esc(row.metabolite)}</span></div><div class="effect-grid"><div><span>CONDITIONAL β</span><b class="${beta!==null&&beta>=0?'positive':'negative'}">${effectFormat(row.beta)}</b></div><div><span>P VALUE</span><b>${pFormat(row.p,row.testable)}</b></div><div><span>−LOG10 P</span><b>${pScore===null?'—':pScore.toFixed(2)}</b></div><div><span>CONDITIONED ON</span><b>${esc(row.conditioned_on_n??'—')}</b></div><div><span>MAF</span><b>${numeric(row.maf)===null?'—':numeric(row.maf).toPrecision(4)}</b></div><div><span>MAF CLASS</span><b>${esc(row.maf_class||'unknown')}</b></div></div><section class="annotation"><h3>Conditional test details</h3><dl><div><dt>Region</dt><dd>${esc(regionLabel(item.region_id))}</dd></div><div><dt>Marker order</dt><dd>${esc(row.marker_order??'—')}</dd></div><div><dt>Standard error</dt><dd>${effectFormat(row.se)}</dd></div><div><dt>Sample size</dt><dd>${esc(row.n??'—')}</dd></div><div><dt>Testable</dt><dd>${esc(row.testable??'—')}</dd></div><div><dt>GIM edge threshold</dt><dd>P ≤ ${conditionalP.toExponential(3)}</dd></div></dl></section></div>`;
+  document.querySelector('#detail').innerHTML=`<header class="detail-head"><div><p class="eyebrow">GIM ASSOCIATION</p><h2>${esc(item.gim_id)}</h2></div><span class="status ${retained?'retained':''}">${retained?'Retained association':'Conditional test'}</span></header><div class="detail-body"><div class="selected-pair"><span>${esc(row.snp_id)}</span><b>×</b><span>${esc(row.metabolite)}</span></div><div class="effect-grid"><div><span>CONDITIONAL β</span><b class="${beta!==null&&beta>=0?'positive':'negative'}">${effectFormat(row.beta)}</b></div><div><span>P VALUE</span><b>${pFormat(row.p,row.testable)}</b></div><div><span>−LOG10 P</span><b>${pScore===null?'—':pScore.toFixed(2)}</b></div><div><span>CONDITIONED ON</span><b>${esc(row.conditioned_on_n??'—')}</b></div><div><span>MAF</span><b>${numeric(row.maf)===null?'—':numeric(row.maf).toPrecision(4)}</b></div><div><span>MAF CLASS</span><b>${esc(row.maf_class||'unknown')}</b></div></div><section class="annotation"><h3>Conditional test details</h3><dl><div><dt>Region</dt><dd>${esc(regionLabel(item.region_id))}</dd></div><div><dt>Marker order</dt><dd>${esc(row.marker_order??'—')}</dd></div><div><dt>Standard error</dt><dd>${effectFormat(row.se)}</dd></div><div><dt>Sample size</dt><dd>${esc(row.n??'—')}</dd></div><div><dt>Testable</dt><dd>${esc(row.testable??'—')}</dd></div><div><dt>GIM edge threshold</dt><dd>P ≤ ${gimEdgeP.toExponential(3)}</dd></div></dl></section></div>`;
   renderHeatmap(item,false);
 }
 function renderHeatmap(item,resetDetail=true){
@@ -249,8 +257,8 @@ if(summary.length){selectedId=String(summary[0].gim_id);select.value=selectedId;
 
     replacements = {
         "__TITLE__": html.escape(title),
-        "__CONDITIONAL_P__": repr(float(conditional_p)),
-        "__CONDITIONAL_P_TEXT__": html.escape(f"{conditional_p:.4g}"),
+        "__GIM_EDGE_P__": repr(float(gim_edge_p)),
+        "__GIM_EDGE_P_TEXT__": html.escape(f"{gim_edge_p:.4g}"),
         "__METADATA__": metadata_html or "<tr><td>No run metadata supplied.</td></tr>",
         "__MATRIX__": payload["matrix"],
         "__MEMBERS__": payload["members"],

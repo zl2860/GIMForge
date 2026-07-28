@@ -4,6 +4,11 @@ GIMForge constructs **GIMs (Genetically Influenced Metabotypes)** from
 precomputed mGWAS summary statistics, a population-matched LD reference panel,
 and individual-level genotype and metabolite data.
 
+Version 0.3 uses `5e-5` as the default sentinel, conditional-selection,
+ordered-matrix, and GIM-edge threshold, while keeping those stages independently
+configurable. Same-trait clumping and sentinel LD searches default to a
+1,000-kb window.
+
 GIMForge does **not** run the upstream mGWAS. It uses existing mGWAS results to
 define candidate regions, runs individual-level conditional analyses, and
 writes GIM membership tables plus an offline interactive HTML report.
@@ -329,7 +334,7 @@ Confirm that:
 
 | Line | Procedure |
 | ---: | --- |
-| **Input** | Trait-specific mGWAS statistics `S`; LD genotype `L` (the study genotype in the examples below, or an external panel); individual-level study genotype `G`; metabolite phenotypes `Y`; covariates `C`; thresholds `sentinel_p`, `ld_span_r2`, `cross_metabolite_merge_r2`, and `conditional_p`. |
+| **Input** | Trait-specific mGWAS statistics `S`; LD genotype `L` (the study genotype in the examples below, or an external panel); individual-level study genotype `G`; metabolite phenotypes `Y`; covariates `C`; thresholds `sentinel_p`, `ld_span_r2`, `cross_metabolite_merge_r2`, `conditional_p`, `gim_matrix_p`, and `gim_edge_p`. |
 | **1** | **for each** metabolite `m`, retain rows in `S_m` with `0 < P <= sentinel_p` and LD-clump them within `m` to obtain sentinel signals. |
 | **2** | **for each** sentinel, use `L` to construct its span from variants with `r² >= ld_span_r2`; use the configured fallback window when no LD neighbour qualifies. |
 | **3** | Link cross-metabolite signals that share a sentinel or have `r² > cross_metabolite_merge_r2`; add padding and merge overlapping spans to obtain candidate regions. |
@@ -340,9 +345,9 @@ Confirm that:
 | **8** | &emsp;Jointly retest every `v ∈ F_m` while conditioning on `F_m \ {v}`; add retained variants to `V_R`. Apply the optional single-forward-lead fallback when configured. |
 | **9** | Initialize the ordered-marker list `O_R ← []` and remaining variants `U_R ← V_R`. |
 | **10** | &emsp;**while** `U_R` is not empty, test every pair in `U_R × M_R` while conditioning on the lower-order markers in `O_R`. |
-| **11** | &emsp;Let `(v*, m*)` be the valid matrix cell with the smallest conditional P value; **if** none exists or `P(v*, m*) > conditional_p`, stop. |
+| **11** | &emsp;Let `(v*, m*)` be the valid matrix cell with the smallest conditional P value; **if** none exists or `P(v*, m*) > gim_matrix_p`, stop. |
 | **12** | &emsp;Append `v*` to `O_R`, store its conditional result for every `m ∈ M_R`, remove `v*` from `U_R`, and return to line 10. |
-| **13** | Retain stored cells with `P <= conditional_p` as the bipartite SNP–metabolite edge set `E_R`. |
+| **13** | Retain stored cells with `P <= gim_edge_p` as the bipartite SNP–metabolite edge set `E_R`. |
 | **14** | Define every connected component of the graph `(O_R, M_R, E_R)` as one GIM. |
 | **Output** | GIM membership, the ordered conditional association matrix, MAF classes, provenance, and the interactive HTML report. |
 
@@ -1190,9 +1195,9 @@ gimforge clump \
   --ancestry EAS \
   --ld-bfile data/cohort \
   --ld-panel-name "Study cohort EAS genotype used for LD" \
-  --sentinel-p 1.25e-11 \
+  --sentinel-p 5e-5 \
   --sentinel-clump-r2 0.1 \
-  --sentinel-clump-window-kb 1000000 \
+  --sentinel-clump-window-kb 1000 \
   --maf-min 0.0001 \
   --mac-min 11 \
   --hwe-p-min 1e-6 \
@@ -1296,7 +1301,7 @@ computationally expensive than the default linear model.
 ```bash
 gimforge components \
   --matrix-out matrix_out.tsv.gz \
-  --conditional-p 1.24741348813236e-8 \
+  --gim-edge-p 5e-5 \
   --ancestry EAS \
   --reference-panel "1000 Genomes Phase 3 EAS (GRCh37)" \
   --out results/gimforge-components
@@ -1319,8 +1324,9 @@ gimforge report \
   --out results/gimforge/report-rebuilt.html
 ```
 
-The threshold comes from `run_manifest.json` unless overridden with
-`--conditional-p`.
+The edge threshold comes from `run_manifest.json` unless overridden with
+`--gim-edge-p`. The older `--conditional-p` spelling remains available as a
+compatibility alias for the `components` and `report` commands.
 
 ### 9.11 Progress and diagnostics
 
@@ -1345,15 +1351,17 @@ All selected values are written to `run_manifest.json`.
 
 | CLI option | Default | Role |
 | --- | ---: | --- |
-| `--sentinel-p` | `1.25e-11` | Maximum mGWAS P value eligible for trait-specific sentinel clumping |
+| `--sentinel-p` | `5e-5` | Maximum mGWAS P value eligible for trait-specific sentinel clumping |
 | `--sentinel-clump-r2` | `0.1` | Same-trait sentinel-clumping r² |
-| `--sentinel-clump-window-kb` | `1000000` | Same-trait physical clumping window in kb |
+| `--sentinel-clump-window-kb` | `1000` | Same-trait physical clumping window in kb |
 | `--ld-span-r2` | `0.1` | Minimum r² used to construct a sentinel LD span |
-| `--ld-window-kb` | `1000000` | LD search window around each sentinel in kb |
+| `--ld-window-kb` | `1000` | LD search window around each sentinel in kb |
 | `--cross-metabolite-merge-r2` | `0.6` | r² above which different sentinel signals are linked across traits |
 | `--no-ld-half-width-kb` | `500` | Fallback half-width when a sentinel has no LD neighbour |
 | `--region-padding-kb` | `250` | Margin added before the final overlap merge |
-| `--conditional-p` | `1.24741348813236e-8` | Forward selection, full-model retention, ordered-matrix selection, and GIM-edge threshold |
+| `--conditional-p` | `5e-5` | Forward-selection and full-model-retention threshold |
+| `--gim-matrix-p` | `5e-5` | Ordered-matrix marker-selection threshold |
+| `--gim-edge-p` | `5e-5` | Final SNP–metabolite edge threshold |
 | `--mac-min` | `10` | Minimum allele count in genotype operations |
 | `--maf-min` | unset | Optional minimum minor allele frequency |
 | `--hwe-p-min` | unset | Optional minimum Hardy-Weinberg equilibrium P value |
@@ -1376,7 +1384,7 @@ Same-trait clumping is controlled by:
 
 ```bash
 --sentinel-clump-r2 0.1 \
---sentinel-clump-window-kb 1000000
+--sentinel-clump-window-kb 1000
 ```
 
 Clumping is performed separately for every trait using the selected LD
@@ -1386,7 +1394,7 @@ LD spans and cross-trait merging are controlled by:
 
 ```bash
 --ld-span-r2 0.1 \
---ld-window-kb 1000000 \
+--ld-window-kb 1000 \
 --cross-metabolite-merge-r2 0.6 \
 --no-ld-half-width-kb 500 \
 --region-padding-kb 250
@@ -1397,16 +1405,19 @@ uses the fallback half-window. Signals are joined when sentinel IDs match or
 their sentinels exceed the cross-trait r² threshold. Padding is then added,
 and overlapping padded regions are merged.
 
-### 10.3 Conditional threshold
+### 10.3 Analysis thresholds
 
-The same `--conditional-p` is used for:
+The three conditional-analysis stages are independently configurable:
 
-1. adding the strongest regional variant during forward selection;
-2. retaining a selected variant in the joint full model;
-3. choosing the next marker in the ordered matrix;
-4. retaining a SNP-trait edge for GIM construction.
+1. `--conditional-p` adds regional variants during forward selection and
+   retains them in the joint full model;
+2. `--gim-matrix-p` determines whether another marker enters the ordered
+   SNP-by-metabolite matrix;
+3. `--gim-edge-p` retains final SNP–metabolite edges for connected-component
+   construction.
 
-Using one value keeps selection and final membership auditable.
+All three default to `5e-5`. Keeping separate values permits sensitivity
+analyses without silently changing the earlier selection stages.
 
 ### 10.4 Genetic and regression models
 
@@ -1597,7 +1608,7 @@ re-clustered or smoothed after analysis.
 `edges.tsv.gz` contains matrix cells with:
 
 ```text
-p <= conditional_p
+p <= gim_edge_p
 ```
 
 Each significant SNP-trait pair is a bipartite graph edge. Connected
@@ -1794,7 +1805,7 @@ Starting with all variants in \(V_R\) unselected:
 1. scan every remaining variant against every trait in \(M_R\), conditioning
    on already ordered markers;
 2. find the smallest P value in the remaining matrix;
-3. stop if it does not pass `conditional_p`;
+3. stop if it does not pass `gim_matrix_p`;
 4. otherwise assign that variant the next order;
 5. record its association with every trait under that conditioning set;
 6. remove it from the remaining set and repeat.
@@ -1804,7 +1815,7 @@ complete, unchanged matrix is written to `matrix_out.tsv.gz`.
 
 ### 12.6 Connected components
 
-Each matrix cell with `P <= conditional_p` becomes an edge between one SNP
+Each matrix cell with `P <= gim_edge_p` becomes an edge between one SNP
 and one metabolite. Connected components are calculated independently within
 each final region. Every component has at least one SNP and one metabolite and
 is reported as one GIM.
