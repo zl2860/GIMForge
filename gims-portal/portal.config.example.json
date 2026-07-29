@@ -1,0 +1,6 @@
+{
+  "bundle": "./portal-bundle",
+  "source_build": "GRCh37",
+  "alpha_python": ".venv-alphagenome/bin/python",
+  "out_dir": "public/data"
+}

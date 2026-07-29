@@ -29,7 +29,36 @@ _FIELDS = {
     "edges": ["region_id", "marker_order", "snp_id", "metabolite", "a1_freq", "maf", "maf_class", "beta", "se", "p", "n", "conditioned_on_n", "testable", "gim_id"],
     "members": ["gim_id", "region_id", "node_type", "node_id", "marker_order", "maf", "maf_class"],
     "gim_summary": ["gim_id", "region_id", "n_snps", "n_rare_snps", "n_low_frequency_snps", "n_common_snps", "n_unknown_maf_snps", "n_metabolites", "snps", "snp_mafs", "snp_maf_classes", "metabolites"],
+    "variants": ["snp_id", "chromosome", "position", "allele1", "allele2"],
 }
+
+
+def portal_variant_rows(
+    bfile: str | Path, snp_ids: set[str]
+) -> list[dict[str, str]]:
+    """Export only portal-relevant BIM rows without participant-level data."""
+
+    rows: list[dict[str, str]] = []
+    seen: set[str] = set()
+    with Path(bfile).with_suffix(".bim").open(encoding="utf-8") as handle:
+        for line in handle:
+            fields = line.split()
+            if len(fields) < 6:
+                continue
+            chromosome, snp_id, _cm, position, allele1, allele2 = fields[:6]
+            if snp_id not in snp_ids or snp_id in seen:
+                continue
+            seen.add(snp_id)
+            rows.append(
+                {
+                    "snp_id": snp_id,
+                    "chromosome": chromosome,
+                    "position": position,
+                    "allele1": allele1,
+                    "allele2": allele2,
+                }
+            )
+    return rows
 
 
 def _write_result(output: Path, result: Mapping[str, Sequence[Mapping[str, object]]]) -> None:
@@ -131,6 +160,17 @@ def run_gim(
         else {"edges": [], "members": [], "gim_summary": []}
     )
     result: dict[str, object] = {**region_result, **conditional, **components}
+    portal_snp_ids = {
+        str(row["node_id"])
+        for row in components.get("members", [])
+        if str(row.get("node_type", "")).upper() == "SNP"
+    }
+    portal_snp_ids.update(
+        str(row["snp_id"])
+        for row in conditional.get("independent_signals", [])
+        if row.get("snp_id")
+    )
+    result["variants"] = portal_variant_rows(bfile, portal_snp_ids)
     progress("Writing result tables")
     _write_result(output, result)  # type: ignore[arg-type]
     manifest = {

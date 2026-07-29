@@ -1,0 +1,983 @@
+.gim-atlas {
+  min-height: 0;
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  overflow: hidden;
+  background: #f6f6f9;
+  color: #20202a;
+  font-family: Poppins, Arial, sans-serif;
+}
+
+.gim-atlas.has-locus-panel {
+  grid-template-columns: minmax(0, 1fr) minmax(500px, 39vw);
+}
+
+.atlas-overview,
+.locus-panel {
+  min-width: 0;
+  min-height: 0;
+}
+
+.atlas-overview {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #fff;
+}
+
+.atlas-titlebar {
+  min-height: 70px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 10px 15px;
+  border-bottom: 1px solid #dedee4;
+}
+
+.atlas-eyebrow {
+  margin: 0 0 3px;
+  color: #080b3a;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .45px;
+}
+
+.atlas-titlebar h1,
+.locus-panel-header h2 {
+  margin: 0;
+  color: #080b3a;
+  font-size: 20px;
+  line-height: 1.18;
+}
+
+.atlas-titlebar p:not(.atlas-eyebrow),
+.locus-panel-header p:not(.atlas-eyebrow) {
+  margin: 4px 0 0;
+  color: #62626b;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.atlas-summary {
+  display: flex;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.atlas-summary span {
+  padding: 6px 8px;
+  border: 1px solid #d6d6dc;
+  background: #fafafd;
+  color: #55555e;
+  font-size: 11px;
+}
+
+.atlas-summary b {
+  color: #080b3a;
+  font-size: 13px;
+}
+
+.atlas-controls {
+  min-height: 52px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: end;
+  gap: 7px;
+  padding: 6px 12px;
+  overflow-x: auto;
+  border-bottom: 1px solid #dedee4;
+  background: #fff;
+}
+
+.atlas-controls label {
+  min-width: 118px;
+  display: grid;
+  gap: 2px;
+  color: #3d3d46;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.atlas-controls label:first-child {
+  min-width: 190px;
+}
+
+.atlas-controls label:nth-child(2) {
+  min-width: 160px;
+}
+
+.atlas-controls input,
+.atlas-controls select {
+  height: 27px;
+  border: 1px solid #8d8d98;
+  border-radius: 0;
+  background: #fff;
+  color: #22222b;
+  padding: 0 6px;
+  font-size: 12px;
+  outline: none;
+}
+
+.atlas-controls input:focus,
+.atlas-controls select:focus {
+  border-color: #080b3a;
+  box-shadow: 0 0 0 1px #080b3a;
+}
+
+.atlas-zoom {
+  height: 27px;
+  display: flex;
+  align-items: center;
+  align-self: end;
+  white-space: nowrap;
+}
+
+.atlas-zoom > span {
+  margin-right: 5px;
+  color: #45454e;
+  font-size: 11px;
+}
+
+.atlas-zoom button,
+.atlas-reset {
+  height: 27px;
+  border: 1px solid #080b3a;
+  border-radius: 0;
+  background: #fff;
+  color: #080b3a;
+  font-size: 15px;
+}
+
+.atlas-zoom button {
+  width: 25px;
+  padding: 0;
+}
+
+.atlas-zoom output {
+  width: 39px;
+  height: 27px;
+  display: grid;
+  place-items: center;
+  border-top: 1px solid #080b3a;
+  border-bottom: 1px solid #080b3a;
+  color: #292932;
+  font-size: 11px;
+}
+
+.atlas-reset {
+  align-self: end;
+  padding: 0 8px;
+  background: #080b3a;
+  color: #fff;
+  font-size: 11px;
+}
+
+.atlas-color-key {
+  height: 27px;
+  display: flex;
+  align-items: center;
+  align-self: end;
+  gap: 2px;
+  color: #4e4e57;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.atlas-color-key i {
+  width: 12px;
+  height: 9px;
+  display: block;
+  border: 1px solid #d5d5dc;
+}
+
+.atlas-color-key .negative {
+  background: #6853da;
+}
+
+.atlas-color-key .neutral {
+  background: #f2f2f5;
+}
+
+.atlas-color-key .positive {
+  background: #ef3731;
+}
+
+.atlas-matrix-area {
+  min-height: 0;
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 86px;
+  overflow: hidden;
+}
+
+.atlas-matrix-scroller {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  background: #f6f6f9;
+}
+
+.atlas-matrix-layout {
+  width: max-content;
+  display: grid;
+  align-content: start;
+  isolation: isolate;
+}
+
+.atlas-corner {
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  justify-content: end;
+  align-items: end;
+  gap: 3px;
+  padding: 9px 10px;
+  border-right: 1px solid #d9d9df;
+  border-bottom: 1px solid #d9d9df;
+  background: #f6f6f9;
+  color: #080b3a;
+  font-size: 12px;
+}
+
+.atlas-corner span {
+  color: #5d5d66;
+  font-size: 11px;
+}
+
+.atlas-x-axis {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  overflow: hidden;
+  border-bottom: 1px solid #d9d9df;
+  background: #f6f6f9;
+}
+
+.atlas-band-strip {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 22px;
+  overflow: hidden;
+  border-bottom: 1px solid #cfcfd6;
+}
+
+.atlas-band-strip span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-right: 1px solid #fff;
+  background: #dedee6;
+  color: #24244c;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.atlas-band-strip span.alternate {
+  background: #c9c9d5;
+}
+
+.atlas-column-label {
+  position: absolute;
+  bottom: 0;
+  overflow: visible;
+  color: #2d2d35;
+  font-size: 12px;
+}
+
+.atlas-column-label > span {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  transform: rotate(-45deg);
+  transform-origin: left center;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.atlas-column-label b {
+  font-weight: 500;
+}
+
+.atlas-column-label small {
+  color: #606069;
+  font-size: 11px;
+}
+
+.atlas-y-axis {
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  overflow: hidden;
+  border-right: 1px solid #d9d9df;
+  background: #f6f6f9;
+}
+
+.atlas-row-label {
+  position: absolute;
+  right: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  padding-left: 5px;
+  color: #303038;
+  font-size: 12px;
+}
+
+.atlas-row-label span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atlas-row-label i {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  display: grid;
+  place-items: center;
+  margin-right: 2px;
+  border-radius: 50%;
+  color: #33333a;
+  font-size: 11px;
+  font-style: normal;
+}
+
+.atlas-cells {
+  position: relative;
+  background-color: #fff;
+  background-image:
+    linear-gradient(to right, #dedee3 1px, transparent 1px),
+    linear-gradient(to bottom, #dedee3 1px, transparent 1px);
+  background-size: var(--atlas-cell) var(--atlas-cell);
+}
+
+.atlas-cell {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  border: 1px solid #d8d8de;
+  border-radius: 0;
+  padding: 0;
+  color: #23232a;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.atlas-cell:hover,
+.atlas-cell:focus-visible {
+  z-index: 2;
+  outline: 2px solid #080b3a;
+  outline-offset: -2px;
+}
+
+.atlas-cell.selected {
+  z-index: 3;
+  outline: 2px solid #f0e500;
+  outline-offset: -1px;
+}
+
+.atlas-minimap {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 8px 7px;
+  overflow: hidden;
+  border-left: 1px solid #d8d8de;
+  background: #fff;
+}
+
+.atlas-minimap header {
+  display: grid;
+  gap: 1px;
+  color: #080b3a;
+  font-size: 11px;
+}
+
+.atlas-minimap header span,
+.atlas-minimap p {
+  color: #6b6b73;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.atlas-minimap svg {
+  width: 100%;
+  min-height: 150px;
+  flex: 1;
+  border: 1px solid #d4d4dc;
+  background: #f3f3f6;
+}
+
+.minimap-background {
+  fill: #f4f4f7;
+}
+
+.atlas-minimap rect.positive {
+  fill: #ef3731;
+}
+
+.atlas-minimap rect.negative {
+  fill: #6853da;
+}
+
+.minimap-viewport {
+  fill: rgba(240, 229, 0, .14);
+  stroke: #080b3a;
+  stroke-width: 4;
+  vector-effect: non-scaling-stroke;
+}
+
+.atlas-minimap p {
+  margin: 0;
+}
+
+.atlas-instruction {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 6px 12px;
+  border-top: 1px solid #dddde3;
+  background: #f6f6f9;
+  color: #42424a;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.atlas-instruction b {
+  color: #080b3a;
+}
+
+.locus-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-left: 1px solid #cfcfd6;
+  background: #fff;
+}
+
+.locus-panel-header {
+  min-height: 70px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 13px;
+  border-bottom: 1px solid #dedee4;
+}
+
+.locus-panel-header > div {
+  min-width: 0;
+}
+
+.locus-panel-header h2,
+.locus-panel-header p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.locus-panel-header > button {
+  width: 27px;
+  height: 27px;
+  flex: 0 0 27px;
+  border: 1px solid #a9a9b3;
+  border-radius: 50%;
+  background: #fff;
+  color: #383840;
+  font-size: 21px;
+  line-height: 1;
+}
+
+.locus-panel-scroll {
+  min-height: 0;
+  overflow: auto;
+}
+
+.locus-small-matrix-scroll {
+  min-height: 220px;
+  max-height: 330px;
+  overflow: auto;
+  border-bottom: 1px solid #dedee4;
+  background: #f6f6f9;
+}
+
+.locus-small-matrix {
+  width: max-content;
+  min-width: 100%;
+  display: grid;
+  align-content: start;
+  font-family: Poppins, Arial, sans-serif;
+}
+
+.locus-small-corner {
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 5;
+  border-right: 1px solid #dedee3;
+  border-bottom: 1px solid #dedee3;
+  background: #f6f6f9;
+}
+
+.locus-small-column {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  overflow: visible;
+  border-bottom: 1px solid #dedee3;
+  background: #f6f6f9;
+}
+
+.locus-small-column > span {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transform: rotate(-45deg);
+  transform-origin: left center;
+  color: #303038;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.locus-small-column i {
+  width: 15px;
+  height: 15px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #33333a;
+  font-size: 11px;
+  font-style: normal;
+}
+
+.locus-small-row {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  overflow: hidden;
+  background: #f6f6f9;
+  color: #303038;
+  font-size: 12px;
+}
+
+.locus-small-row span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.locus-small-row small {
+  color: #676770;
+}
+
+.locus-small-row > i {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  display: grid;
+  place-items: center;
+  margin-right: 2px;
+  border-radius: 50%;
+  background: #d4d1ec;
+  color: #29294e;
+  font-size: 11px;
+  font-style: normal;
+}
+
+.locus-small-cell {
+  min-width: 21px;
+  min-height: 21px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #d8d8de;
+  border-radius: 0;
+  padding: 0;
+  color: #25252c;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.locus-small-cell.blank {
+  background: #fff;
+  color: transparent;
+}
+
+.locus-small-cell:not(.blank):hover,
+.locus-small-cell:not(.blank):focus-visible {
+  z-index: 2;
+  outline: 2px solid #080b3a;
+  outline-offset: -2px;
+}
+
+.locus-small-cell.selected {
+  z-index: 3;
+  outline: 2px solid #f0e500;
+  outline-offset: -1px;
+}
+
+.locus-selection-note,
+.locus-caveat,
+.locus-empty {
+  margin: 0;
+  padding: 8px 12px;
+  color: #55555f;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.locus-selection-note {
+  border-bottom: 1px solid #dedee4;
+  background: #fff;
+}
+
+.locus-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  display: flex;
+  overflow-x: auto;
+  border-bottom: 1px solid #080b3a;
+  background: #fff;
+}
+
+.locus-tabs button {
+  flex: 0 0 auto;
+  border: 0;
+  border-right: 1px solid #d8d8de;
+  background: #fff;
+  color: #404048;
+  padding: 7px 9px;
+  font-size: 11px;
+}
+
+.locus-tabs button.active {
+  background: #080b3a;
+  color: #fff;
+}
+
+.locus-tab-body {
+  padding: 11px 12px 14px;
+}
+
+.locus-selected-pair {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 9px;
+  padding: 8px 10px;
+  border-left: 3px solid #080b3a;
+  background: #f0f0f6;
+  color: #080b3a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.locus-effect-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 10px;
+  border-top: 1px solid #dedee4;
+  border-left: 1px solid #dedee4;
+}
+
+.locus-effect-grid > div {
+  min-width: 0;
+  padding: 7px;
+  border-right: 1px solid #dedee4;
+  border-bottom: 1px solid #dedee4;
+}
+
+.locus-effect-grid span {
+  display: block;
+  color: #6b6b73;
+  font-size: 11px;
+}
+
+.locus-effect-grid b {
+  display: block;
+  overflow-wrap: anywhere;
+  margin-top: 3px;
+  color: #25252e;
+  font-size: 12px;
+}
+
+.locus-table-wrap {
+  overflow: auto;
+  border: 1px solid #dedee4;
+}
+
+.locus-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: #393941;
+  font-size: 11px;
+}
+
+.locus-table th,
+.locus-table td {
+  padding: 6px;
+  border-right: 1px solid #e5e5ea;
+  border-bottom: 1px solid #e5e5ea;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.locus-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f0f0f5;
+  color: #080b3a;
+  font-weight: 700;
+}
+
+.locus-table tr.active {
+  background: #fffbd2;
+}
+
+.locus-table button {
+  border: 0;
+  background: none;
+  color: #3b328f;
+  padding: 0;
+  font-size: inherit;
+  font-weight: 600;
+}
+
+.locus-gene-list,
+.locus-alpha-list,
+.locus-metabolomics-list {
+  display: grid;
+  gap: 8px;
+}
+
+.locus-gene-list article,
+.locus-alpha-list article,
+.locus-metabolomics-list article,
+.locus-gwas-source {
+  border: 1px solid #dcdce3;
+  background: #fff;
+}
+
+.locus-gene-list article > header,
+.locus-alpha-list article > header,
+.locus-metabolomics-list article > header,
+.locus-gwas-source > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 9px;
+  border-bottom: 1px solid #e2e2e8;
+  background: #f6f6f9;
+}
+
+.locus-gene-list header > div,
+.locus-alpha-list header > div {
+  display: grid;
+  gap: 2px;
+}
+
+.locus-gene-list header b,
+.locus-alpha-list header b,
+.locus-metabolomics-list header b,
+.locus-gwas-source h3 {
+  margin: 0;
+  color: #080b3a;
+  font-size: 13px;
+}
+
+.locus-gene-list header span,
+.locus-alpha-list header span,
+.locus-metabolomics-list header span,
+.locus-gene-list header small,
+.locus-alpha-list header small {
+  color: #696972;
+  font-size: 11px;
+}
+
+.locus-gene-list dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+  padding: 6px 9px;
+}
+
+.locus-gene-list dl > div {
+  min-width: 0;
+  padding: 4px;
+}
+
+.locus-gene-list dt {
+  color: #777780;
+  font-size: 11px;
+}
+
+.locus-gene-list dd {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+  color: #33333c;
+  font-size: 11px;
+}
+
+.locus-gene-list footer {
+  display: flex;
+  gap: 12px;
+  padding: 0 9px 8px;
+}
+
+.locus-gene-list a,
+.locus-gwas-source a {
+  color: #3b328f;
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.locus-gwas-source {
+  margin-top: 9px;
+}
+
+.locus-gwas-source > p {
+  margin: 0;
+  padding: 12px;
+  color: #666670;
+  font-size: 11px;
+}
+
+.locus-alpha-coverage {
+  margin-bottom: 9px;
+  padding: 8px;
+  border-left: 3px solid #6853da;
+  background: #f0effa;
+  color: #39355f;
+  font-size: 11px;
+}
+
+.locus-alpha-list article > div {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.locus-alpha-list article > div span {
+  padding: 7px 5px;
+  border-right: 1px solid #e6e6eb;
+  color: #66666e;
+  font-size: 11px;
+}
+
+.locus-alpha-list article > div b {
+  display: block;
+  color: #080b3a;
+  font-size: 13px;
+}
+
+.locus-alpha-list article > button {
+  width: calc(100% - 16px);
+  display: flex;
+  justify-content: space-between;
+  margin: 8px;
+  border: 1px solid #080b3a;
+  border-radius: 0;
+  background: #fff;
+  color: #080b3a;
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.locus-alpha-list article > button:disabled {
+  opacity: .5;
+}
+
+.locus-metabolomics-list article > div {
+  padding: 7px 9px;
+}
+
+.locus-metabolomics-list article p {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 45px 70px;
+  gap: 6px;
+  margin: 0;
+  padding: 4px 0;
+  border-bottom: 1px solid #ececf0;
+  color: #4d4d55;
+  font-size: 11px;
+}
+
+.locus-metabolomics-list article p.significant {
+  color: #080b3a;
+  font-weight: 600;
+}
+
+@media (max-width: 1180px) {
+  .gim-atlas.has-locus-panel {
+    grid-template-columns: minmax(0, 1fr) minmax(440px, 46vw);
+  }
+
+  .atlas-summary {
+    display: none;
+  }
+
+  .atlas-minimap {
+    display: none;
+  }
+
+  .atlas-matrix-area {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 820px) {
+  .portal-app:has(.gim-atlas) {
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .gim-atlas.has-locus-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .gim-atlas.has-locus-panel .atlas-overview {
+    display: none;
+  }
+
+  .locus-panel {
+    border-left: 0;
+  }
+
+  .atlas-titlebar {
+    min-height: 62px;
+  }
+
+  .atlas-controls {
+    align-items: end;
+  }
+}

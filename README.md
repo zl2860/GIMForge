@@ -429,6 +429,7 @@ To review trait-specific clumping before the conditional analysis, run
 | `gim_summary.tsv` | One row per GIM with membership and SNP MAF-class counts |
 | `matrix_out.tsv.gz` | Complete ordered conditional SNP-by-metabolite matrix |
 | `regions.tsv` | Final candidate-region boundaries |
+| `variants.tsv.gz` | Portal-ready coordinates and study-observed alleles for GIM/independent-signal SNPs; no participant-level data |
 | `run_manifest.json` | Input paths, software versions, LD panel, and parameters |
 | `run.log` | Timestamped progress and errors |
 
@@ -440,6 +441,27 @@ xdg-open results/gimforge/report.html
 
 The complete schema and interpretation notes are in
 [Outputs and report](#11-outputs-and-report).
+
+### Build the annotated GIMs Portal
+
+The [`gims-portal`](gims-portal) subpackage turns a completed native GIMForge
+result directory into the global GIM × metabolite heatmap, locus panels,
+variant annotations, and AlphaGenome prioritisation view. Current GIMForge
+outputs are self-contained for this step:
+
+```bash
+cd gims-portal
+npm ci
+npm run portal -- --results /path/to/results/gimforge
+npm run preview
+```
+
+The command checks annotation dependencies before securely requesting the
+AlphaGenome API key. For an offline-server → connected-workstation workflow,
+legacy-result compatibility, and separate `prepare`, `annotate`, and `build`
+commands, follow the [complete portal tutorial](gims-portal/README.md).
+
+[![GIMs Portal after opening a global heatmap cell](gims-portal/docs/gims-portal-heatmap-cell-detail.png)](gims-portal/docs/gims-portal-heatmap-cell-detail.png)
 
 ## Detailed guide
 
@@ -1545,6 +1567,7 @@ interpreting GIM-count differences.
 | `edges.tsv.gz` | Significant matrix cells, MAF class, and assigned GIM IDs |
 | `members.tsv.gz` | Long-format GIM membership with SNP MAF class |
 | `gim_summary.tsv` | Compact GIM catalogue with SNP MAF-class counts |
+| `variants.tsv.gz` | GIM/independent-signal SNP coordinates and the two study-observed BIM alleles for downstream annotation; no participant-level data |
 | `run_manifest.json` | Inputs, software versions, model, LD source, and parameters |
 | `report.html` | Offline interactive browser and conditional heatmap |
 | `run.log` | Timestamped progress and errors |
@@ -1673,6 +1696,7 @@ regions.tsv
 region_metabolites.tsv
 gim_summary.tsv
 matrix_out.tsv.gz
+variants.tsv.gz
 report.html
 ```
 
